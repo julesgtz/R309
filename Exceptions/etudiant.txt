@@ -1,0 +1,2 @@
+insert into etudiant values('1','crackito','1988-05-05','dazfzvid','ariane');
+insert into etudiant values('7','crackito2','1988-05-05','dazfzvid','ariane');
