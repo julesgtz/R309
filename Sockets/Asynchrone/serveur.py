@@ -22,7 +22,7 @@ class Server:
         print("Attente d'une connexion d'un client")
         self.s.listen(1)
         self.conn, self.address = self.s.accept()
-        print("Nouveau client, connexion effectuée")
+        print("Nouveau client, connexion effectuée, ip :", self.address[0])
         self.is_client = True
 
     def send_messages(self):

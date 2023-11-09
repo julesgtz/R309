@@ -5,7 +5,7 @@ while True:
     if not connected:
         client_socket = socket.socket()
         message = input("Tapes 'entrée' pour te connecter ")
-        client_socket.connect(("10.128.4.44", 6350))
+        client_socket.connect(("127.0.0.1", 6350))
     connected = True
     message = input("message : ")
     client_socket.send(message.encode())
