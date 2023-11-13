@@ -14,7 +14,7 @@ def receive_messages(client_socket):
 def main():
 
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect(('10.128.1.64', 6250))
+    client.connect(('127.0.0.1', 6350))
 
     receive_thread = threading.Thread(target=receive_messages, args=(client,))
     receive_thread.start()
