@@ -3,6 +3,7 @@ import sys
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.setFixedSize(300,150)
         widget = QWidget()
         self.setCentralWidget(widget)
         grid = QGridLayout()
