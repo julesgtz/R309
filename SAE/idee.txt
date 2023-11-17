@@ -41,9 +41,10 @@ Cote client:
 Selon moi user envoie toutes les 5 secondes ce qu'il regarde genre le channel ou le message privé + quand il change de truc il envoie qu'il change d'endroit et faire un dictionnaire sur le serveur en global et faire un for user in "nom du channel": -> envoie message
 ou une liste de dict d'user {user, status("co, deco , absent"), channel qu'il regarde}
 
-pour le status, les clients envoye toutes les 5 secondes, mais le serveur doit aussi envoyer a tous les clients (de la liste d'au dessus en fonction de où ils regardent , je pense faire quelque chose comem discord avec les users , si l'user regarde le meme channel alors il sera afficher, il y'a X users qui regarde le channel , alors X user afficher, si il a pas bouger sa souris depuis 1 minute, il sera en absent mais sera toujours affiché dans le channel, pour les MP bah logique ce qu'il faut faire) si l'user est co / deco / absent
+pour le status, les clients envoye toutes les 5 secondes, mais le serveur doit aussi envoyer a tous les clients (de la liste d'au dessus en fonction de où ils regardent , je pense faire quelque chose comem discord avec les users , si l'user regarde le meme channel alors il sera afficher, il y'a X users qui regarde le channel , alors X user afficher, si il a pas bouger sa souris depuis 1 minute, il sera en absent mais sera toujours affiché dans le channel, pour les MP bah logique ce qu'il faut faire) si l'user est co / deco / absent. Si il regarde ses paramateres, un channels où il a pas acces mettre rien comme ca il recoit pas les msgs
 
 Pour les MP comment trouver les personnes ? afficher toutes les personnes ayant un compte ? (sans les bans)
+status ('pending', 'accepted', 'rejected') requete quand qq veut join, le met en pending en attendant etc etc
 
 TO DO LIST DANS L'ORDRE
 

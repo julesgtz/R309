@@ -3,28 +3,36 @@ CREATE DATABASE SAE;
 USE SAE;
 
 CREATE TABLE Users (
-    userID INT PRIMARY KEY AUTO_INCREMENT,
+    userID INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
     username VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE Channels (
-    channelID INT PRIMARY KEY AUTO_INCREMENT,
+    channelID INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
     channel_name VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE Messages (
-    messageID INT PRIMARY KEY AUTO_INCREMENT,
+    messageID INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
     senderID INT NOT NULL,
     receiverID INT,
     channelID INT,
     content TEXT NOT NULL,
-    timestamp DATETIME,
+    timestamp DATETIME NOT NULL,
     FOREIGN KEY (senderID) REFERENCES Users(userID),
     FOREIGN KEY (receiverID) REFERENCES Users(userID),
     FOREIGN KEY (channelID) REFERENCES Channels(channelID)
 );
 
+CREATE TABLE ChannelRequests (
+    requestID INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
+    channelID INT NOT NULL,
+    userID INT NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending' NOT NULL,
+    FOREIGN KEY (channelID) REFERENCES Channels(channelID),
+    FOREIGN KEY (userID) REFERENCES Users(userID)
+);
 
 CREATE USER 'Server'@'%' IDENTIFIED BY '4dm1n';
 GRANT ALL PRIVILEGES ON SAE.* TO 'Server'@'%';
