@@ -1,0 +1,31 @@
+CREATE DATABASE SAE;
+
+USE SAE;
+
+CREATE TABLE Users (
+    userID INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE Channels (
+    channelID INT PRIMARY KEY AUTO_INCREMENT,
+    channel_name VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE Messages (
+    messageID INT PRIMARY KEY AUTO_INCREMENT,
+    senderID INT NOT NULL,
+    receiverID INT,
+    channelID INT,
+    content TEXT NOT NULL,
+    timestamp DATETIME,
+    FOREIGN KEY (senderID) REFERENCES Users(userID),
+    FOREIGN KEY (receiverID) REFERENCES Users(userID),
+    FOREIGN KEY (channelID) REFERENCES Channels(channelID)
+);
+
+
+CREATE USER 'Server'@'%' IDENTIFIED BY '4dm1n';
+GRANT ALL PRIVILEGES ON SAE.* TO 'Server'@'%';
+FLUSH PRIVILEGES;

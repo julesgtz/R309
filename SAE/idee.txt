@@ -3,10 +3,11 @@ Idées pour ce qu'on doit faire coté serveur:
 	faire un systeme de dict pour les messages envoyé depuis le client et utiliser kwargs pour gerer les messages
 	laisser nom de l'utilisateur et pas mettre d'id car on ne souhaite pas changer de nom tt le temps d'user
 	a voir si ID nécessaire coté channel
-	system de log en clair sur dans un .txt comme wtn bot
-	enregistrer dans mysql les messages entres users + channels pour pouvoir voir les anciens messages
-	Enregistrer Nom , Heure, Message et channel où il a été envoyé, pour pouvoir bien tout réafficher
-	Pouvoir kick/ ban depuis le nom du gars ou l'ip
+	faire system login / logout / register
+	la base SQL ne sert que pour les logs pour l'admin ainsi que les users / pass pour les personnes + les bans / kick etc
+	enregistrer dans mysql les messages entres users + channels pour pouvoir voir les anciens messages (seulement les logs en gros pour l'admin, qui a envoyer quoi quand où)
+	Enregistrer Nom , Heure, Message et channel où il a été envoyé, pour pouvoir bien tout réafficher (Si le temps car systeme d'historique n'est pas nécessaire si quand tu changes de channel les messages n'apparaissent pas , selement si tu es dans le channel , si j'ai le temps go faire historique mp et tout)
+	Pouvoir kick/ ban depuis le nom du gars ou l'ip que depuis le serveur
 	LE SERVEUR DOIT FAIRE UN DICTIONNAIRE POUR ENREGISTRER LE NOM DU GARS ET SON IP ACTUELLE (si le gars se deco et se co sur une autre ip, il faut que le dictionnaire se mette a jour)
 
 message "relais":
@@ -33,4 +34,25 @@ Cote client:
 	Faire interfaces graphique où tu peux faire la demande pour rejoindre un channel, ca envoie une rq mais rien de plus
 	Page de LOGIN d'abord
 	page de REGISTER (par email ou que sais-je)
+	bouton logout
 	DOCS
+
+
+Selon moi user envoie toutes les 5 secondes ce qu'il regarde genre le channel ou le message privé + quand il change de truc il envoie qu'il change d'endroit et faire un dictionnaire sur le serveur en global et faire un for user in "nom du channel": -> envoie message
+ou une liste de dict d'user {user, status("co, deco , absent"), channel qu'il regarde}
+
+pour le status, les clients envoye toutes les 5 secondes, mais le serveur doit aussi envoyer a tous les clients (de la liste d'au dessus en fonction de où ils regardent , je pense faire quelque chose comem discord avec les users , si l'user regarde le meme channel alors il sera afficher, il y'a X users qui regarde le channel , alors X user afficher, si il a pas bouger sa souris depuis 1 minute, il sera en absent mais sera toujours affiché dans le channel, pour les MP bah logique ce qu'il faut faire) si l'user est co / deco / absent
+
+Pour les MP comment trouver les personnes ? afficher toutes les personnes ayant un compte ? (sans les bans)
+
+TO DO LIST DANS L'ORDRE
+
+- ecrire idées (fait)
+- schema bdd (fait)
+- script bdd (fait)
+- server mysql (fait)
+- creer user (fait)
+- mettre les tables (fait)
+- code serveur
+- code client
+- dump mysql database sur le github
