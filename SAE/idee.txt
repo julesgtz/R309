@@ -55,5 +55,10 @@ TO DO LIST DANS L'ORDRE
 - creer user (fait)
 - mettre les tables (fait)
 - code serveur
+    - socket
+    - threading
+    - logique des messages syntaxe
+    - relation avec bdd
+    - int graphique
 - code client
 - dump mysql database sur le github
