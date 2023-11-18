@@ -52,6 +52,8 @@ class MainWindow(QMainWindow):
         self.unite1.setText(uni1)
         self.unite2.setText(uni2)
 
+    def __error(self, val):
+        QMessageBox.information(self, 'Erreur', f"Veuillez entrer une valeur correcte, '{val}' n'en est pas une !")
 
     def __get_conversion_type(self):
         return True if self.set_conversion.currentText() == "K -> °C" else False
@@ -60,6 +62,7 @@ class MainWindow(QMainWindow):
         try:
             float(self.text.text())
         except:
+            self.__error(self.text.text())
             return
         unite = "K" if self.__get_conversion_type() else "C"
         value = float(self.text.text())
@@ -70,6 +73,7 @@ class MainWindow(QMainWindow):
             self.result.setText(str(value + 273.15 if unite =="C" else value - 273.15))
         else:
             self.result.setText("")
+            self.__error(self.text.text())
 
 
 
