@@ -1,5 +1,8 @@
 Idées pour ce qu'on doit faire coté serveur:
 
+    A LA FIN REMPLACER (REFRACTOR) TOUTES LES VARIABLES X Y Z PAR __X __Y __Z
+
+
 	faire un systeme de dict pour les messages envoyé depuis le client et utiliser kwargs pour gerer les messages
 	laisser nom de l'utilisateur et pas mettre d'id car on ne souhaite pas changer de nom tt le temps d'user
 	a voir si ID nécessaire coté channel
@@ -20,14 +23,14 @@ message "be/server-side":
 
 	commande serait quand il tape / {"command":"ban Jules", "user":"nom de l'user"}
 
-	quand l'utilsateur clique sur un channel, cela doit afficher les messages d'avant : {"get_channel":"nom du channel / id ?", "user":"nom de l'utilisateur"}
-
-	quand l'utilisateur clique sur une conv pv, il doit y'avoir les messages précedent aussi {"get_private":"nom de l'user", "user":"nom de l'utilisateur"}
-
 	quand l'utilsateur fait une demande de join un channel privé {"join":"nom du channel / id ?", "user":"nom de l'utilisateur"}
 	si le channel est un channel sans autorisation, accepte auto sinon stocker la demande et attentre admin
 
-	quand l'utilisateur se log {"user:pwd": "user:pwd en clair", "user":"nom de l'utilisateur"}
+	quand l'utilisateur veut savoir les personnes connectées {"get_status"...}
+
+	quand l'utilsateur ferme le bot, envoie {"close":True,"user":"nom user"}
+
+	//quand l'utilisateur se log {"user:pwd": "user:pwd en clair", "user":"nom de l'utilisateur"}
 
 
 Cote client:
@@ -38,10 +41,12 @@ Cote client:
 	DOCS
 
 
-Selon moi user envoie toutes les 5 secondes ce qu'il regarde genre le channel ou le message privé + quand il change de truc il envoie qu'il change d'endroit et faire un dictionnaire sur le serveur en global et faire un for user in "nom du channel": -> envoie message
-ou une liste de dict d'user {user, status("co, deco , absent"), channel qu'il regarde}
 
-pour le status, les clients envoye toutes les 5 secondes, mais le serveur doit aussi envoyer a tous les clients (de la liste d'au dessus en fonction de où ils regardent , je pense faire quelque chose comem discord avec les users , si l'user regarde le meme channel alors il sera afficher, il y'a X users qui regarde le channel , alors X user afficher, si il a pas bouger sa souris depuis 1 minute, il sera en absent mais sera toujours affiché dans le channel, pour les MP bah logique ce qu'il faut faire) si l'user est co / deco / absent. Si il regarde ses paramateres, un channels où il a pas acces mettre rien comme ca il recoit pas les msgs
+
+Faire en sorte que l'user envoie toutes les 5 secondes son status {connected, idle, deconnected}, le serveur envoie a tous les users le status de toutes les personnes, et ecrire a coté de leur blaze (toutes les 5s) jules[connected]
+
+Afficher aussi les users qui ont acces au channel avec co deco et tout
+
 
 Pour les MP comment trouver les personnes ? afficher toutes les personnes ayant un compte ? (sans les bans)
 status ('pending', 'accepted', 'rejected') requete quand qq veut join, le met en pending en attendant etc etc
