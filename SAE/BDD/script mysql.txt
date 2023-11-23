@@ -6,13 +6,16 @@ CREATE TABLE Users (
     userID INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
     username VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
-    status VARCHAR(255) DEFAULT 'access' NOT NULL,
-    ip INT UNSIGNED NOT NULL
+    ip INT UNSIGNED NOT NULL,
+    status VARCHAR(20) DEFAULT 'access' NOT NULL,
+    timestamp DATETIME
+
 );
 
 CREATE TABLE Channels (
     channelID INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
-    channel_name VARCHAR(255) NOT NULL
+    channel_name VARCHAR(255) NOT NULL,
+    need_accept VARCHAR(20) DEFAULT 'None' NOT NULL
 );
 
 CREATE TABLE Messages (
