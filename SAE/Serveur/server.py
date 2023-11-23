@@ -38,6 +38,10 @@ class Server:
             self.running = False
 
     def __channel_rq(self):
+        """
+        Permet au server d'accepter / refuser les requêtes pour rejoindre un channel
+        :return:
+        """
         while self.running:
             need_accept = get_channel_rq(connexion=self.connexion)
             sleep(30)
@@ -150,6 +154,8 @@ class Server:
         is_private = message.get("private_message", None)
         is_channel_msg = message.get("channel_message", None)
 
+        is_join_channel = message.get("join", None)
+
         is_command = message.get("command", None)
 
         is_get_status = message.get("get_status", None)
@@ -214,19 +220,30 @@ class Server:
                 command, user = is_command.split(" ")
                 if command == "kick":
                     user, temps = user.split(" ")
-                    good, date = kick_user(user=user, duree=temps, connexion=self.connexion)
-                    if good:
-                        client.send(str.encode(json.dumps({'command': f"user kicked : {user} until {date}"})))
-                    else:
-                        client.send(str.encode(json.dumps({'command': f"user {user} does not exist"})))
+                    try:
+                        ipaddress.ip_address(user)
+                        good, date = kick_user(ip=user, duree=temps, connexion=self.connexion)
+                        if good:
+                            client.send(str.encode(json.dumps({'command': f"ip kicked until {date} : {user}"})))
+                        else:
+                            client.send(str.encode(json.dumps({'command': f"ip {user} does not exist"})))
+                    except:
+                        good, date = kick_user(user=user, duree=temps, connexion=self.connexion)
+                        if good:
+                            client.send(str.encode(json.dumps({'command': f"user kicked until {date} : {user}"})))
+                        else:
+                            client.send(str.encode(json.dumps({'command': f"user {user} does not exist"})))
                     return None
+
+
+
 
                 else:
                     try:
                         ipaddress.ip_address(user)
                         good = ban_user(ip=user, connexion=self.connexion)
                         if good:
-                            client.send(str.encode(json.dumps({'command': f"ip banned {user}"})))
+                            client.send(str.encode(json.dumps({'command': f"ip banned :{user}"})))
                         else:
                             client.send(str.encode(json.dumps({'command': f"ip {user} does not exist"})))
                     except:
