@@ -1,0 +1,277 @@
+import socket
+from threading import Thread, current_thread
+from time import sleep
+from helper import *
+import json
+import ipaddress
+
+
+class Server:
+    def __init__(self, max_user: int, ip: str, port: int, ip_bdd: str):
+        """
+        Initialisation de la classe server
+
+        :param max_user: Le nombre max d'users sur le serveur
+        :param ip: l'ip du serveur
+        :param port: le port du serveur
+        :param ip_bdd: l'ip de la base de données
+        """
+        self.user_conn = {}
+        self.conn_client = []
+        self.user_status = {}
+        # user : status (idle / connected)
+        self.c_user = 0
+        self.m = max_user
+        self.ip = ip
+        self.port = port
+        self.running = True
+        self.threads = []
+
+        bind = self.__bind()
+        if not bind:
+            self.running = False
+
+        self.ip_bdd = ip_bdd
+
+        self.connexion = check_bdd(host=ip_bdd)
+        if not self.connexion:
+            self.running = False
+
+    def __channel_rq(self):
+        while self.running:
+            need_accept = get_channel_rq(connexion=self.connexion)
+            sleep(30)
+        else:
+            self.threads.remove(current_thread())
+
+    def __bind(self):
+        """
+        Permet de créer le socket et de bind l'ip et le port au socket
+
+        :return: :bool: Si la connexion est réussie
+        """
+        try:
+            print("Création du socket")
+            self.s = socket.socket()
+            self.s.bind((self.ip, self.port))
+            print(f"Running sur l'ip {self.ip}:{self.port}, {self.m} max users")
+        except socket.error as e:
+            print(f"Erreur lors de la liaison du socket : {e}")
+            return False
+        else:
+            return True
+
+    def __credential_checker(self, client, ip):
+        """
+        Permet de check si l'utilisateur doit crée un compte / a un compte / est ban / kick
+
+        :param client: La connexion socket entre le client et le serveur
+        :param ip: l'ip du client
+        :return: :bool: si la connexion est réussie
+        """
+        logged = False
+        while not logged:
+            __reply = client.recv(1024).decode()
+            reply = json.loads(__reply)
+
+            login = reply.get("login", None)
+            register = reply.get("register", None)
+            if login:
+                is_ban = check_ban(user=reply.get("user"), ip=ip, connexion=self.connexion)
+                if is_ban:
+                    client.send(str.encode(json.dumps({'login': False, 'ban': True})))
+                    return logged
+
+                is_kick, duree = check_kick(user=reply.get("user"), ip=ip, connexion=self.connexion)
+                if is_kick:
+                    client.send(str.encode(json.dumps({'login': False, 'kick': duree})))
+                    return logged
+
+                user_exist = check_user_exist(user=reply.get("user"), connexion=self.connexion)
+                if user_exist:
+                    username, password = get_user_pwd(reply.get("user"), connexion=self.connexion)
+                    if username == reply.get("user") and password == reply.get("password"):
+                        logged = True
+                        self.user_conn[username] = client
+                        client.send(str.encode(json.dumps({'login': True})))
+                    else:
+                        client.send(str.encode(json.dumps({'login': False})))
+
+                else:
+                    client.send(str.encode(json.dumps({'login': False})))
+            elif register:
+                "Pour le register check si la personne a bien mis aucun espace etc ect (surement le faire depuis le client , a voir)"
+                __reply = client.recv(1024).decode()
+                reply = json.loads(__reply)
+
+                user_exist = check_user_exist(user=reply.get("user"), connexion=self.connexion)
+                if user_exist:
+                    client.send(str.encode(json.dumps({'register': False})))
+                else:
+                    register_user(user=reply.get("user"), password=reply.get("password"), ip=ip,
+                                  connexion=self.connexion)
+                    client.send(str.encode(json.dumps({'register': True})))
+        else:
+            return logged
+
+    def __accept_clients(self):
+        """
+        Permet d'accepter les clients jusqu'au nombre max d'users
+        """
+        rq_thread = Thread(target=self.__channel_rq, args=())
+        self.threads.append(rq_thread)
+
+        while self.running:
+            while self.m > self.c_user:
+                print("Attente d'un client")
+                self.s.listen(self.m)
+                client, address = self.s.accept()
+                print(f"Nouvelle connexion : {address[0]}")
+
+                thread = Thread(target=self.__client_hdl, args=(client, address[0]))
+                self.threads.append(thread)
+                self.c_user += 1
+                thread.start()
+
+            else:
+                print("Max users sur le serveur, attente qu'une place se libère ~30s")
+                sleep(30)
+
+    def __message_handler(self, message, client, ip):
+        """
+        Gere les messages reçu
+
+        :param message: Message reçu du client
+        :param client: La connexion entre le client et le serveur
+        :return: "stop_connexion" si l'utilisateur a fermer le bot, "relogin" si l'utilisateur s'est déconnecté, sinon None
+        """
+        print(message)  # debug
+
+        is_private = message.get("private_message", None)
+        is_channel_msg = message.get("channel_message", None)
+
+        is_command = message.get("command", None)
+
+        is_get_status = message.get("get_status", None)
+        is_set_status = message.get("set_status", None)
+
+        is_close = message.get("close", None)
+        is_logout = message.get("logout", None)
+
+        if is_logout:
+            return "relogin"
+
+        elif is_close:
+            return "stop_connexion"
+
+        elif is_get_status:
+            is_banned = check_ban(user=message.get("user"), ip=ip, connexion=self.connexion)
+            is_kicked, duree = check_kick(user=message.get("user"), ip=ip, connexion=self.connexion)
+            if is_banned:
+                client.send(str.encode(json.dumps({'login': False, 'ban': True})))
+                return "stop_connexion"
+            if is_kicked:
+                client.send(str.encode(json.dumps({'login': False, 'kick': duree})))
+                return "stop_connexion"
+
+            users = get_all_user_name(connexion=self.connexion)
+            self.user_status.update({user: "deconnected" for user in users if user not in self.user_status})
+            client.send(str.encode(json.dumps({'get_status': self.user_status})))
+            return None
+
+        elif is_set_status:
+            self.user_status[message.get("user")] = message.get("status")
+            return None
+
+
+        elif is_channel_msg:
+            save_channel_message(message=is_channel_msg, channel_name=message.get("channel"),
+                                 username=message.get("user"), connexion=self.connexion)
+            for conn in self.conn_client:
+                if conn != client:
+                    conn.send(str.encode(json.dumps(
+                        {'channel_message': is_channel_msg, "channel": message.get("channel"),
+                         "user": message.get("user")})))
+            return None
+
+        elif is_private:
+            save_private_message(message=is_channel_msg, other_user=message.get("other_user"),
+                                 username=message.get("user"), connexion=self.connexion)
+            conn = self.user_conn.get(message.get("user"))
+            conn.send(str.encode(json.dumps(
+                {"private_message": is_channel_msg, "user": message.get("user"),
+                 "other_user": message.get("other_user")})))
+            return None
+
+
+
+        elif is_command:
+            user = message.get("user")
+            if not user == "admin":
+                client.send(str.encode(json.dumps({'command': "Not allowed"})))
+                return None
+            else:
+                command, user = is_command.split(" ")
+                if command == "kick":
+                    user, temps = user.split(" ")
+                    good, date = kick_user(user=user, duree=temps, connexion=self.connexion)
+                    if good:
+                        client.send(str.encode(json.dumps({'command': f"user kicked : {user} until {date}"})))
+                    else:
+                        client.send(str.encode(json.dumps({'command': f"user {user} does not exist"})))
+                    return None
+
+                else:
+                    try:
+                        ipaddress.ip_address(user)
+                        good = ban_user(ip=user, connexion=self.connexion)
+                        if good:
+                            client.send(str.encode(json.dumps({'command': f"ip banned {user}"})))
+                        else:
+                            client.send(str.encode(json.dumps({'command': f"ip {user} does not exist"})))
+                    except:
+                        good = ban_user(user=user, connexion=self.connexion)
+                        if good:
+                            client.send(str.encode(json.dumps({'command': f"user banned : {user}"})))
+                        else:
+                            client.send(str.encode(json.dumps({'command': f"user {user} does not exist"})))
+                    return None
+
+        else:
+            "erreur c'est pas normal"
+
+    def __client_hdl(self, new_client, ip):
+        closed = False
+        while not closed:
+            new_client.send(str.encode("True"))
+            is_logged = self.__credential_checker(client=new_client, ip=ip)
+            if is_logged:
+                self.conn_client.append(new_client)
+
+                while is_logged:
+                    __reply = new_client.recv(1024).decode()
+                    reply = json.loads(__reply)
+
+                    status = self.__message_handler(message=reply, client=new_client, ip=ip)
+                    if status == "stop_connexion":
+                        is_logged = False
+                        closed = True
+                    if status == "relogin":
+                        is_logged = False
+
+                else:
+                    self.conn_client.remove(new_client)
+
+        else:
+            new_client.close()
+            self.user_conn = {key: val for key, val in self.user_conn.items() if val != new_client}
+            self.conn_client.remove(new_client)
+            self.c_user -= 1
+            self.threads.remove(current_thread())
+
+    def start(self):
+        """
+        Start la classe
+        """
+        while self.running:
+            self.__accept_clients()
