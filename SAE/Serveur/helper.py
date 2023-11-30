@@ -221,6 +221,13 @@ def check_kick(user, ip, connexion):
 
 def get_channel_rq(connexion):
     cursor = connexion.cursor()
+    "liste , avec dedans une liste a chaque fois comprennant requests_id,channel ,username"
+
+def set_status_channel_rq(connexion, accept=False, refuse=False, request_id=None):
+    if accept:
+        ...
+    if refuse:
+        ...
 
 def get_all_user_name(connexion):
     """
