@@ -2,6 +2,10 @@ Idées pour ce qu'on doit faire coté serveur:
 
     A LA FIN REMPLACER (REFRACTOR) TOUTES LES VARIABLES X Y Z PAR __X __Y __Z
 
+    FAIRE UNE FONCTION QUI HANDLE LES MESSAGES DU SERVER
+
+    FAIRE UNE TEMPLATE POUR LE CLIENT DE TOUS LES MESSAGES QU'IL PEUT ENVOYER, PRECISEMENT, AVEC DES EXEMPLES CAR SINON JEME SOUVIENDRAI PLUS
+
 
 	faire un systeme de dict pour les messages envoyé depuis le client et utiliser kwargs pour gerer les messages
 	laisser nom de l'utilisateur et pas mettre d'id car on ne souhaite pas changer de nom tt le temps d'user
