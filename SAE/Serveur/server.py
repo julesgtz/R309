@@ -4,6 +4,8 @@ from time import sleep
 from helper import *
 import json
 import ipaddress
+import os
+
 
 
 class Server:
@@ -26,25 +28,73 @@ class Server:
         self.port = port
         self.running = True
         self.threads = []
-
-        bind = self.__bind()
-        if not bind:
-            self.running = False
+        self.connexion = None
 
         self.ip_bdd = ip_bdd
 
-        self.connexion = check_bdd(host=ip_bdd)
-        if not self.connexion:
-            self.running = False
+
 
     def __channel_rq(self):
         """
         Permet au server d'accepter / refuser les requêtes pour rejoindre un channel
-        :return:
         """
+        need_refresh = False
         while self.running:
             need_accept = get_channel_rq(connexion=self.connexion)
-            sleep(30)
+
+            os.system('cls' if os.name == 'nt' else 'clear')
+            print("Voici les demandes :")
+            c_rq = 0
+
+            for rq in need_accept:
+                c_rq += 1
+                request_id ,channel_name, user_name = rq
+                print(f"{c_rq} : Demande de {user_name} pour rejoindre le channel {channel_name}")
+            print("\n")
+            reponse_id = None
+
+            while not reponse_id:
+                reponse_id = input("Entrez le numéro de requête que vous voulez gérer (R / r pour refresh) : ")
+                try:
+                    reponse_id = int(reponse_id)
+                    if not 0< reponse_id < c_rq:
+                        print(f"La requête {reponse_id} n'existe pas")
+                        reponse_id = None
+
+                except:
+                    try:
+                        reponse_id = str(reponse_id)
+                        if not reponse_id.lower() == "r":
+                            print(f"Tapez r / R pour refresh, {reponse_id} n'existe pas")
+                            reponse_id = None
+                        else:
+                            need_refresh = True
+                    except:
+                        reponse_id = None
+
+            if not need_refresh:
+                os.system('cls' if os.name == 'nt' else 'clear')
+                print(f"Vous avez séléctionné la requête numéro {reponse_id}")
+                request_id, channel_name, user_name = need_accept[reponse_id]
+                print(f"Demande de {user_name} pour rejoindre le channel {channel_name}")
+
+                reponse = None
+                while not reponse:
+                    try:
+                        reponse = str(input("Voulez vous accepter / refuser la requête (exit/quit pour quitter, a/accepter pour accepter, r/refuser pour refuser) : "))
+                        if reponse.lower() == 'exit' or 'quit':
+                            reponse = True
+                        elif reponse.lower() == 'a' or 'accepter':
+                            set_status_channel_rq(connexion=self.connexion, accept=True, request_id=request_id)
+                        elif reponse.lower() == 'r' or 'refuser':
+                            set_status_channel_rq(connexion=self.connexion, refuse=True, request_id=request_id)
+                        else:
+                            print(f"{reponse} n'existe pas")
+                            reponse = None
+                    except:
+                        reponse = None
+            print("Actualisation dans 10s")
+            sleep(10)
         else:
             self.threads.remove(current_thread())
 
@@ -151,6 +201,8 @@ class Server:
         """
         print(message)  # debug
 
+        is_kill = message.get("kill", None)
+
         is_private = message.get("private_message", None)
         is_channel_msg = message.get("channel_message", None)
 
@@ -215,7 +267,6 @@ class Server:
             user = message.get("user")
             if not user == "admin":
                 client.send(str.encode(json.dumps({'command': "Not allowed"})))
-                return None
             else:
                 command, user = is_command.split(" ")
                 if command == "kick":
@@ -233,9 +284,6 @@ class Server:
                             client.send(str.encode(json.dumps({'command': f"user kicked until {date} : {user}"})))
                         else:
                             client.send(str.encode(json.dumps({'command': f"user {user} does not exist"})))
-                    return None
-
-
 
 
                 else:
@@ -252,7 +300,27 @@ class Server:
                             client.send(str.encode(json.dumps({'command': f"user banned : {user}"})))
                         else:
                             client.send(str.encode(json.dumps({'command': f"user {user} does not exist"})))
-                    return None
+            return None
+
+        elif is_kill:
+            user = message.get("user")
+            if not user == "admin":
+                client.send(str.encode(json.dumps({'kill': "Not allowed"})))
+
+            else:
+                for con in self.conn_client:
+                    con.send(str.encode(json.dumps({'kill': True})))
+                    #les clients doivent ensuite envoyer is_close pour close leur connexion
+            return None
+
+
+        elif is_join_channel:
+            user = message.get("user")
+            if message.get("status", None):
+                "recupere le status , est ce que il est accepter ou refuser ou rien de toutes les requetes de l'user"
+            else:
+                "demande pour rejoindre un channel"
+
 
         else:
             "erreur c'est pas normal"
@@ -290,5 +358,15 @@ class Server:
         """
         Start la classe
         """
+        bind = self.__bind()
+        if not bind:
+            self.running = False
+        self.connexion = check_bdd(host=self.ip_bdd)
+        if not self.connexion:
+            self.running = False
+
         while self.running:
             self.__accept_clients()
+        else:
+            print("ERROR")
+
