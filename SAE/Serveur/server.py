@@ -125,47 +125,59 @@ class Server:
         """
         logged = False
         while not logged:
+            "tant qu'il n'est pas log, attend ses logins"
             __reply = client.recv(1024).decode()
             reply = json.loads(__reply)
 
             login = reply.get("login", None)
             register = reply.get("register", None)
             if login:
-                is_ban = check_ban(user=reply.get("user"), ip=ip, connexion=self.connexion)
-                if is_ban:
-                    client.send(str.encode(json.dumps({'login': False, 'ban': True})))
-                    return logged
-
-                is_kick, duree = check_kick(user=reply.get("user"), ip=ip, connexion=self.connexion)
-                if is_kick:
-                    client.send(str.encode(json.dumps({'login': False, 'kick': duree})))
-                    return logged
-
                 user_exist = check_user_exist(user=reply.get("user"), connexion=self.connexion)
                 if user_exist:
+                    is_ban = check_ban(user=reply.get("user"), ip=ip, connexion=self.connexion)
+                    if is_ban:
+                        "renvoie false si ban"
+                        client.send(str.encode(json.dumps({'login': False, 'ban': True})))
+                        return logged
+
+                    is_kick, duree = check_kick(user=reply.get("user"), ip=ip, connexion=self.connexion)
+                    if is_kick:
+                        "renvoie false si kick"
+                        client.send(str.encode(json.dumps({'login': False, 'kick': duree})))
+                        return logged
+                        
                     username, password = get_user_pwd(reply.get("user"), connexion=self.connexion)
                     if username == reply.get("user") and password == reply.get("password"):
+                        "check si username / pwd concordent"
                         logged = True
                         self.user_conn[username] = client
                         client.send(str.encode(json.dumps({'login': True})))
+                        return logged
                     else:
-                        client.send(str.encode(json.dumps({'login': False})))
+                        "Username/pwd incorrect"
+                        client.send(str.encode(json.dumps({'login': False, 'need_register': False})))
 
                 else:
-                    client.send(str.encode(json.dumps({'login': False})))
+                    "User existe pas, doit se register"
+                    client.send(str.encode(json.dumps({'login': False, 'need_register': True})))
+                    
             elif register:
                 "Pour le register check si la personne a bien mis aucun espace etc ect (surement le faire depuis le client , a voir)"
+                "L'user veut se register, le serveur attend sa nouvelle requete avec l'username et password"
                 __reply = client.recv(1024).decode()
                 reply = json.loads(__reply)
 
                 user_exist = check_user_exist(user=reply.get("user"), connexion=self.connexion)
                 if user_exist:
+                    "L'utilisateur existe deja, il doit se connecter alors ou se register avec un autre username, le client va lui afficher un message d'erreur, il devra recliquer sur register"
                     client.send(str.encode(json.dumps({'register': False})))
                 else:
+                    "l'user existe pas, le serveur l'enregiste, renvoie dans la boucle, l'user doit se connecter"
                     register_user(user=reply.get("user"), password=reply.get("password"), ip=ip,
                                   connexion=self.connexion)
                     client.send(str.encode(json.dumps({'register': True})))
         else:
+            "si il est log, sort de la boucle et renvoie True pour hdl les messages"
             return logged
 
     def __accept_clients(self):
@@ -202,27 +214,39 @@ class Server:
         print(message)  # debug
 
         is_kill = message.get("kill", None)
+        "Si l'utilisateur veut arreter le serveur"
 
         is_private = message.get("private_message", None)
+        "Si l'utilisateur veut envoyer un message privé a un autre utilisateur"
         is_channel_msg = message.get("channel_message", None)
+        "Si l'utilisateur veut envoyer un message dans un channel"
 
         is_join_channel = message.get("join", None)
-
+        "Si l'utilisateur veut join un channel"
+        
         is_command = message.get("command", None)
+        "Si l'utilisateur veut effectuer une commande"
 
         is_get_status = message.get("get_status", None)
+        "Si l'utilisateur veut recuperer les status des users, connectés, déco, idle"
         is_set_status = message.get("set_status", None)
+        "Si l'utilisateur veut mettre a jour son status pour les autres users, connectés, déco, idle"
 
         is_close = message.get("close", None)
+        "Si l'utilisateur veut fermer le client"
         is_logout = message.get("logout", None)
+        "Si l'utilisateur veut se déconnecter"
 
         if is_logout:
+            "renvoie vers la page de login"
             return "relogin"
 
         elif is_close:
+            "ferme la connexion, le thread ..."
             return "stop_connexion"
 
         elif is_get_status:
+            "Quand l'utilisateur va get le status toutes les X secondes, il va en meme temps check si il est ban / kick, pour le deconnecter si c'est le cas"
             is_banned = check_ban(user=message.get("user"), ip=ip, connexion=self.connexion)
             is_kicked, duree = check_kick(user=message.get("user"), ip=ip, connexion=self.connexion)
             if is_banned:
@@ -330,7 +354,9 @@ class Server:
         while not closed:
             new_client.send(str.encode("True"))
             is_logged = self.__credential_checker(client=new_client, ip=ip)
+            "Il faut check si l'utilisateur ne ferme pas le client durant la connexion !!"
             if is_logged:
+                "Il s'est connecté , on ajoute sa connexion"
                 self.conn_client.append(new_client)
 
                 while is_logged:
@@ -345,9 +371,14 @@ class Server:
                         is_logged = False
 
                 else:
+                    "il a cliquer sur le bouton deconnecté, on va attendre qu'il se register / se reconnecter"
                     self.conn_client.remove(new_client)
+            else:
+                "L'user est ban / kick, on ferme la connexion"
+                closed = True
 
         else:
+            "l'user a fermer son client, on supprime donc sa connexion, son thread et on enleve un user"
             new_client.close()
             self.user_conn = {key: val for key, val in self.user_conn.items() if val != new_client}
             self.conn_client.remove(new_client)
