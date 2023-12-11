@@ -373,6 +373,7 @@ class Server:
                 else:
                     "il a cliquer sur le bouton deconnecté, on va attendre qu'il se register / se reconnecter"
                     self.conn_client.remove(new_client)
+                    self.user_conn = {key: val for key, val in self.user_conn.items() if val != new_client}
             else:
                 "L'user est ban / kick, on ferme la connexion"
                 closed = True
