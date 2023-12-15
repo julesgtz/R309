@@ -8,7 +8,11 @@ La plupart des fonctions d'acces a la base de donnée
 
 
 """
+//////////////////////////////////
+
 FONCTIONS CHECK (PERMETTANT DE CHECK UNE INFORMATION DANS LA BASE DE DONNEES)
+
+//////////////////////////////////
 """
 
 def check_bdd(host):
@@ -156,7 +160,11 @@ def check_kick(user, ip, connexion):
 		
 		
 """
+//////////////////////////////////
+
 FONCTIONS SET ( PERMETTANT DE MODIFIER LA BASE DE DONNEE )
+
+//////////////////////////////////
 """
 
 
@@ -339,7 +347,11 @@ def register_user(user, password, ip, connexion):
 
 
 """
+//////////////////////////////////
+
 FONCTIONS GET ( PERMETTANT DE RECUPERER DES INFORMATIONS DE LA BASE DE DONNEE )
+
+//////////////////////////////////
 """
 
 
