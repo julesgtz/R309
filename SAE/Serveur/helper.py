@@ -6,6 +6,11 @@ from datetime import datetime, timedelta
 La plupart des fonctions d'acces a la base de donnée
 """
 
+
+"""
+FONCTIONS CHECK (PERMETTANT DE CHECK UNE INFORMATION DANS LA BASE DE DONNEES)
+"""
+
 def check_bdd(host):
     """
     Permet de check si la base de données est accessible, se connecte et renvoi le curseur
@@ -78,79 +83,7 @@ def check_ip_exist(ip, connexion):
         return False
     finally:
         cursor.close()
-
-
-def register_user(user, password, ip, connexion):
-    """
-    Créer un user dans la table user, ajoute son mot de passe et son ip
-
-    :param user: Username de l'utilisateur
-    :param password: Le mot de passe de l'utilisateur
-    :param ip: L'ip de l'utilisateur
-    :param connexion: La connexion à la Base de Données
-    :return:
-    """
-    cursor = connexion.cursor()
-    try:
-        rq = "INSERT INTO Users (username, password, ip) VALUES (%s, %s, %s)"
-        cursor.execute(rq, (user, password, ip))
-        connexion.commit()
-    except mysql.connector.Error as err:
-        connexion.rollback()
-        print(f"Erreur lors de l'ajout de l'utilisateur : {err}")
-
-
-def get_channel_id(channel_name, connexion):
-    """
-    Permet de récuperer le channelID du channel
-    :param channel_name: Nom du channel
-    :param connexion: La connexion à la Base de Données
-    :return: ChannelID si existe sinon None
-    """
-    cursor = connexion.cursor()
-
-    try:
-        rq = "SELECT channelID FROM Channels WHERE channel_name = %s"
-        cursor.execute(rq, (channel_name,))
-        result = cursor.fetchone()
-
-        if result:
-            return result[0]
-        else:
-            return None
-
-    except mysql.connector.Error as err:
-        print(f"Erreur lors de la récupération de l'ID du canal : {err}")
-        return None
-
-    finally:
-        cursor.close()
-
-
-def get_user_id(user, connexion):
-    """
-    Permet de récuperer l'userID de l'user
-    :param user: Username de l'utilisateur
-    :param connexion: La connexion à la Base de Données
-    :return: UserID si existe sinon None
-    """
-    cursor = connexion.cursor()
-    try:
-        rq = "SELECT userID FROM Users WHERE username = %s"
-        cursor.execute(rq, (user,))
-        result = cursor.fetchone()
-
-        if result:
-            return result[0]
-        else:
-            return None
-    except mysql.connector.Error as err:
-        print(f"Erreur lors de la récupération de l'userID : {err}")
-        return None
-
-    finally:
-        cursor.close()
-
+		
 def check_ban(user, ip, connexion):
     """
     Permet de check si une ip ou un utilisateur est banni
@@ -218,10 +151,14 @@ def check_kick(user, ip, connexion):
 
     finally:
         cursor.close()
+		
+		
+		
+		
+"""
+FONCTIONS SET ( PERMETTANT DE MODIFIER LA BASE DE DONNEE )
+"""
 
-def get_channel_rq(connexion):
-    cursor = connexion.cursor()
-    "liste , avec dedans une liste a chaque fois comprennant requests_id,channel ,username"
 
 def set_status_channel_rq(connexion, accept=False, refuse=False, request_id=None):
     if accept:
@@ -229,26 +166,8 @@ def set_status_channel_rq(connexion, accept=False, refuse=False, request_id=None
     if refuse:
         ...
 
-def get_all_user_name(connexion):
-    """
-    Récupère la liste de tous les users de la base de données
-    :param connexion: Connexion avec la base de données
-    :return: La liste des users si tout est bon, sinon None
-    """
-    cursor = connexion.cursor()
-    try:
-        rq = "SELECT username FROM Users"
-        cursor.execute(rq)
-        results = cursor.fetchall()
-        usernames = [result[0] for result in results]
-        return usernames
 
-    except mysql.connector.Error as err:
-        print(f"Erreur lors de la récupération des usernames : {err}")
-        return None
 
-    finally:
-        cursor.close()
 
 def ban_user(user=None, ip=None, connexion=None):
     """
@@ -396,6 +315,34 @@ def save_private_message(username, other_user, message, connexion):
     finally:
         cursor.close()
 
+def register_user(user, password, ip, connexion):
+    """
+    Créer un user dans la table user, ajoute son mot de passe et son ip
+
+    :param user: Username de l'utilisateur
+    :param password: Le mot de passe de l'utilisateur
+    :param ip: L'ip de l'utilisateur
+    :param connexion: La connexion à la Base de Données
+    :return:
+    """
+    cursor = connexion.cursor()
+    try:
+        rq = "INSERT INTO Users (username, password, ip) VALUES (%s, %s, %s)"
+        cursor.execute(rq, (user, password, ip))
+        connexion.commit()
+    except mysql.connector.Error as err:
+        connexion.rollback()
+        print(f"Erreur lors de l'ajout de l'utilisateur : {err}")
+
+
+
+
+
+"""
+FONCTIONS GET ( PERMETTANT DE RECUPERER DES INFORMATIONS DE LA BASE DE DONNEE )
+"""
+
+
 def get_user_pwd(user, connexion):
     """
     Récupere l'username et le mot de passe d'un user
@@ -440,6 +387,83 @@ def get_channel_acceptation(channel_name, connexion):
 
     except mysql.connector.Error as err:
         print(f"Erreur lors de la récupération du champ 'need_accept' : {err}")
+        return None
+
+    finally:
+        cursor.close()
+
+def get_all_user_name(connexion):
+    """
+    Récupère la liste de tous les users de la base de données
+    :param connexion: Connexion avec la base de données
+    :return: La liste des users si tout est bon, sinon None
+    """
+    cursor = connexion.cursor()
+    try:
+        rq = "SELECT username FROM Users"
+        cursor.execute(rq)
+        results = cursor.fetchall()
+        usernames = [result[0] for result in results]
+        return usernames
+
+    except mysql.connector.Error as err:
+        print(f"Erreur lors de la récupération des usernames : {err}")
+        return None
+
+    finally:
+        cursor.close()
+		
+def get_channel_rq(connexion):
+    cursor = connexion.cursor()
+    "liste , avec dedans une liste a chaque fois comprennant requests_id,channel ,username, si et seulement si l'utilisateur est en attente"
+	
+
+def get_channel_id(channel_name, connexion):
+    """
+    Permet de récuperer le channelID du channel
+    :param channel_name: Nom du channel
+    :param connexion: La connexion à la Base de Données
+    :return: ChannelID si existe sinon None
+    """
+    cursor = connexion.cursor()
+
+    try:
+        rq = "SELECT channelID FROM Channels WHERE channel_name = %s"
+        cursor.execute(rq, (channel_name,))
+        result = cursor.fetchone()
+
+        if result:
+            return result[0]
+        else:
+            return None
+
+    except mysql.connector.Error as err:
+        print(f"Erreur lors de la récupération de l'ID du canal : {err}")
+        return None
+
+    finally:
+        cursor.close()
+
+
+def get_user_id(user, connexion):
+    """
+    Permet de récuperer l'userID de l'user
+    :param user: Username de l'utilisateur
+    :param connexion: La connexion à la Base de Données
+    :return: UserID si existe sinon None
+    """
+    cursor = connexion.cursor()
+    try:
+        rq = "SELECT userID FROM Users WHERE username = %s"
+        cursor.execute(rq, (user,))
+        result = cursor.fetchone()
+
+        if result:
+            return result[0]
+        else:
+            return None
+    except mysql.connector.Error as err:
+        print(f"Erreur lors de la récupération de l'userID : {err}")
         return None
 
     finally:
