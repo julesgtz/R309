@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 La plupart des fonctions d'acces a la base de donnée
 """
 
-
 """
 //////////////////////////////////
 
@@ -14,6 +13,7 @@ FONCTIONS CHECK (PERMETTANT DE CHECK UNE INFORMATION DANS LA BASE DE DONNEES)
 
 //////////////////////////////////
 """
+
 
 def check_bdd(host):
     """
@@ -65,6 +65,7 @@ def check_user_exist(user, connexion):
     finally:
         cursor.close()
 
+
 def check_ip_exist(ip, connexion):
     """
     Check si l'ip existe dans la table user
@@ -87,7 +88,8 @@ def check_ip_exist(ip, connexion):
         return False
     finally:
         cursor.close()
-		
+
+
 def check_ban(user, ip, connexion):
     """
     Permet de check si une ip ou un utilisateur est banni
@@ -120,6 +122,7 @@ def check_ban(user, ip, connexion):
 
     finally:
         cursor.close()
+
 
 def check_kick(user, ip, connexion):
     """
@@ -155,10 +158,8 @@ def check_kick(user, ip, connexion):
 
     finally:
         cursor.close()
-		
-		
-		
-		
+
+
 """
 //////////////////////////////////
 
@@ -169,12 +170,36 @@ FONCTIONS SET ( PERMETTANT DE MODIFIER LA BASE DE DONNEE )
 
 
 def set_status_channel_rq(connexion, accept=False, refuse=False, request_id=None):
+    """
+    Permet de définir le status d'une requete pour rejoindre un channel
+    :param connexion: Connexion avec la base de données
+    :param accept: Si la demande a besoin d'etre accepté
+    :param refuse: Si la demande a besoin d'etre refusé
+    :param request_id: l'id de la requete a modifier le status
+    :return:
+    """
+    if not (accept or refuse) or (accept and refuse):
+        return
+
+    status = 'pending'
     if accept:
-        ...
-    if refuse:
-        ...
+        status = 'accept'
+    elif refuse:
+        status = 'refuse'
 
+    cursor = connexion.cursor()
 
+    try:
+        rq = "UPDATE ChannelRequests SET status = %s WHERE requestID = %s"
+        cursor.execute(rq, (status, request_id))
+        connexion.commit()
+
+    except mysql.connector.Error as err:
+        connexion.rollback()
+        print(f"Erreur lors de la mise a jour de la requete vers le channel: {err}")
+        return
+    finally:
+        cursor.close()
 
 
 def ban_user(user=None, ip=None, connexion=None):
@@ -218,7 +243,7 @@ def ban_user(user=None, ip=None, connexion=None):
         cursor.close()
 
 
-def kick_user(user=None, ip=None, duree: int = None, connexion= None):
+def kick_user(user=None, ip=None, duree: int = None, connexion=None):
     """
     Permet de kick un username / une ip pendant un nombre d'heure défini
 
@@ -291,6 +316,7 @@ def save_channel_message(username, channel_name, message, connexion):
     finally:
         cursor.close()
 
+
 def save_private_message(username, other_user, message, connexion):
     """
     Permet de sauvegarder un message privé entre le membre 1 et le membre 2 dans la base de donnée
@@ -323,6 +349,7 @@ def save_private_message(username, other_user, message, connexion):
     finally:
         cursor.close()
 
+
 def register_user(user, password, ip, connexion):
     """
     Créer un user dans la table user, ajoute son mot de passe et son ip
@@ -341,9 +368,6 @@ def register_user(user, password, ip, connexion):
     except mysql.connector.Error as err:
         connexion.rollback()
         print(f"Erreur lors de l'ajout de l'utilisateur : {err}")
-
-
-
 
 
 """
@@ -380,6 +404,7 @@ def get_user_pwd(user, connexion):
     finally:
         cursor.close()
 
+
 def get_channel_acceptation(channel_name, connexion):
     """
     Permet de récupérer si le channel a besoin de faire une requête pour être rejoins
@@ -404,6 +429,7 @@ def get_channel_acceptation(channel_name, connexion):
     finally:
         cursor.close()
 
+
 def get_all_user_name(connexion):
     """
     Récupère la liste de tous les users de la base de données
@@ -424,11 +450,45 @@ def get_all_user_name(connexion):
 
     finally:
         cursor.close()
-		
+
+
 def get_channel_rq(connexion):
+    """
+    Cette fonction sert au serveur pour recuperer toutes les demandes pour rejoindre des channels
+    :param connexion: Connexion avec la base de données
+    :return: Une liste de liste comprennant ['request_id', 'channel_name', 'username']
+    """
+    result = []
+
     cursor = connexion.cursor()
-    "liste , avec dedans une liste a chaque fois comprennant requests_id,channel ,username, si et seulement si l'utilisateur est en attente"
-	
+
+    try:
+        rq = "SELECT * FROM ChannelRequests"
+        cursor.execute(rq)
+
+        for row in cursor.fetchall():
+            request_id, channel_id, user_id, status = row
+
+            if status == 'pending':
+                rq = "SELECT channel_name FROM Channels WHERE channelID = %s"
+                cursor.execute(rq, (channel_id,))
+                channel_name = cursor.fetchone()[0]
+
+                rq = "SELECT username FROM Users WHERE userID = %s"
+                cursor.execute(rq, (user_id,))
+                username = cursor.fetchone()[0]
+
+                result.append([request_id, channel_name, username])
+
+    except mysql.connector.Error as err:
+        print(f"Erreur lors de la récupération : {err}")
+        return None
+
+    finally:
+        cursor.close()
+
+    return result
+
 
 def get_channel_id(channel_name, connexion):
     """

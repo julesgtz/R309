@@ -46,55 +46,59 @@ class Server:
             print("Voici les demandes :")
             c_rq = 0
 
-            for rq in need_accept:
-                c_rq += 1
-                request_id ,channel_name, user_name = rq
-                print(f"{c_rq} : Demande de {user_name} pour rejoindre le channel {channel_name}")
-            print("\n")
-            reponse_id = None
+            if need_accept:
+                for rq in need_accept:
+                    c_rq += 1
+                    request_id ,channel_name, user_name = rq
+                    print(f"{c_rq} : Demande de {user_name} pour rejoindre le channel {channel_name}")
+                print("\n")
+                reponse_id = None
 
-            while not reponse_id:
-                reponse_id = input("Entrez le numéro de requête que vous voulez gérer (R / r pour refresh) : ")
-                try:
-                    reponse_id = int(reponse_id)
-                    if not 0< reponse_id < c_rq:
-                        print(f"La requête {reponse_id} n'existe pas")
-                        reponse_id = None
-
-                except:
+                while not reponse_id:
+                    reponse_id = input("Entrez le numéro de requête que vous voulez gérer (R / r pour refresh) : ")
                     try:
-                        reponse_id = str(reponse_id)
-                        if not reponse_id.lower() == "r":
-                            print(f"Tapez r / R pour refresh, {reponse_id} n'existe pas")
+                        reponse_id = int(reponse_id)
+                        if not 0< reponse_id < c_rq:
+                            print(f"La requête {reponse_id} n'existe pas")
                             reponse_id = None
-                        else:
-                            need_refresh = True
+
                     except:
-                        reponse_id = None
+                        try:
+                            reponse_id = str(reponse_id)
+                            if not reponse_id.lower() == "r":
+                                print(f"Tapez r / R pour refresh, {reponse_id} n'existe pas")
+                                reponse_id = None
+                            else:
+                                need_refresh = True
+                        except:
+                            reponse_id = None
 
-            if not need_refresh:
-                os.system('cls' if os.name == 'nt' else 'clear')
-                print(f"Vous avez séléctionné la requête numéro {reponse_id}")
-                request_id, channel_name, user_name = need_accept[reponse_id]
-                print(f"Demande de {user_name} pour rejoindre le channel {channel_name}")
+                if not need_refresh:
+                    os.system('cls' if os.name == 'nt' else 'clear')
+                    print(f"Vous avez séléctionné la requête numéro {reponse_id}")
+                    request_id, channel_name, user_name = need_accept[reponse_id]
+                    print(f"Demande de {user_name} pour rejoindre le channel {channel_name}")
 
-                reponse = None
-                while not reponse:
-                    try:
-                        reponse = str(input("Voulez vous accepter / refuser la requête (exit/quit pour quitter, a/accepter pour accepter, r/refuser pour refuser) : "))
-                        if reponse.lower() == 'exit' or 'quit':
-                            reponse = True
-                        elif reponse.lower() == 'a' or 'accepter':
-                            set_status_channel_rq(connexion=self.connexion, accept=True, request_id=request_id)
-                        elif reponse.lower() == 'r' or 'refuser':
-                            set_status_channel_rq(connexion=self.connexion, refuse=True, request_id=request_id)
-                        else:
-                            print(f"{reponse} n'existe pas")
+                    reponse = None
+                    while not reponse:
+                        try:
+                            reponse = str(input("Voulez vous accepter / refuser la requête (exit/quit pour quitter, a/accepter pour accepter, r/refuser pour refuser) : "))
+                            if reponse.lower() == 'exit' or 'quit':
+                                reponse = True
+                            elif reponse.lower() == 'a' or 'accepter':
+                                set_status_channel_rq(connexion=self.connexion, accept=True, request_id=request_id)
+                            elif reponse.lower() == 'r' or 'refuser':
+                                set_status_channel_rq(connexion=self.connexion, refuse=True, request_id=request_id)
+                            else:
+                                print(f"{reponse} n'existe pas")
+                                reponse = None
+                        except:
                             reponse = None
-                    except:
-                        reponse = None
-            print("Actualisation dans 10s")
-            sleep(10)
+                print("Actualisation dans 10s")
+                sleep(10)
+            else:
+                print("Actualisation dans 10s, pas de nouvelles demandes")
+                sleep(10)
         else:
             self.threads.remove(current_thread())
 
@@ -279,10 +283,9 @@ class Server:
         elif is_private:
             save_private_message(message=is_channel_msg, other_user=message.get("other_user"),
                                  username=message.get("user"), connexion=self.connexion)
-            conn = self.user_conn.get(message.get("user"))
+            conn = self.user_conn.get(message.get("other_user"))
             conn.send(str.encode(json.dumps(
-                {"private_message": is_channel_msg, "user": message.get("user"),
-                 "other_user": message.get("other_user")})))
+                {"private_message": is_channel_msg, "user": message.get("user"),})))
             return None
 
 

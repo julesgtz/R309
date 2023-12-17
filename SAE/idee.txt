@@ -22,6 +22,8 @@ message "relais":
 	message dans un channel serait {"channel_message":"voici le message", "user":"nom de l'user", "channel": "nom du channel / id ?"}
 
 	message privé serait {"private_message":"voici le message", "user":"nom de l'user", "other_user": "nom de l'user"}
+	l'other user , le client envoie ca, le serveur renvoie au field user en enlevant other_user, donc l'autre client voit qui a émit le msg , et le msg
+	le client envoie son user et dans other user il envoie a qui il veut envoyer le msg, le serveur enleve a chaque fois le other user
 
 message "be/server-side":
 
@@ -63,11 +65,12 @@ TO DO LIST DANS L'ORDRE
 - server mysql (fait)
 - creer user (fait)
 - mettre les tables (fait)
-- code serveur
-    - socket
-    - threading
-    - logique des messages syntaxe
-    - relation avec bdd
-    - int graphique
+- code serveur (fait)
+    - socket (fait)
+    - threading (fait)
+    - logique des messages syntaxe (fait)
+    - relation avec bdd (fait)
 - code client
+    - page login (qui clear tout les messages recu au cas ou il se co avec un autre acc)
+    - suivre les pages en fonction schema
 - dump mysql database sur le github
