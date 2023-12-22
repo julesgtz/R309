@@ -176,9 +176,11 @@ class MainWindow(QMainWindow):
 
         self.stackedWidget.setCurrentIndex(0)
 
+        self.show()
+
         self.bind_socket()
-        t = Thread(target=self.receive_msg, args=(), name="receive_socket_msg").start()
-        self.thread.append(t)
+#        t = Thread(target=self.receive_msg, args=(), name="receive_socket_msg").start()
+#        self.thread.append(t)
 
 
     def bind_socket(self):
@@ -188,13 +190,12 @@ class MainWindow(QMainWindow):
         except Exception as e:
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Critical)
-            msg.setText("Error connecting with the server, closing App in 5s")
+            msg.setText("Error connecting with the server, closing App when you click on button")
             msg.setInformativeText(f'{e}')
             msg.setWindowTitle("Error")
             msg.exec_()
-            "sleep pendant 5s"
             self.close_app()
-            "l'appli ne se ferme pas jsp pq"
+
 
 
     def setup_public_msg(self):
@@ -220,11 +221,13 @@ class MainWindow(QMainWindow):
             self.s.close()
         except:
             pass
-        QApplication.exit(0)
+        QApplication.closeAllWindows()
+        sys.exit()
+
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = MainWindow(ip="1",port=9999)
-    window.show()
-    sys.exit(app.exec_())
+    #window.show()
+    app.exec()
