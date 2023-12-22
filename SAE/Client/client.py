@@ -1,10 +1,11 @@
 
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QGridLayout, QSpacerItem, QMessageBox, QSizePolicy, QLabel, QLineEdit, QPushButton, QMainWindow, QFrame, QVBoxLayout, QStackedWidget, QHBoxLayout, QListWidget, QListWidgetItem
+from PyQt5.QtWidgets import QApplication, QWidget, QGridLayout, QPlainTextEdit, QSpacerItem, QMessageBox, QSizePolicy, QLabel, QLineEdit, QPushButton, QMainWindow, QFrame, QVBoxLayout, QStackedWidget, QHBoxLayout, QListWidget, QListWidgetItem
 from PyQt5 import QtGui, QtCore
 from threading import Thread
 import socket
 import json
+from time import sleep
 
 
 class MainWindow(QMainWindow):
@@ -13,14 +14,18 @@ class MainWindow(QMainWindow):
 
         self.is_running = True
         self.is_mp_btn_clicked = False
-        self.is_public_btn_clicked = False
+        self.is_login_page = True
         self.ip = ip
         self.port = port
         self.thread = []
-
+        self.user_status = {"Cheval":"deco","marie":"connected","test":"test"}
+        self.username = ""
+        self.cache = {"Général": ["moi -> test", "charles -> awee"], "Blabla": ["salut"], "Comptabilité": [], "Informatique": [], "Marketing": []}
+        #ajoute au buffer des qu'un msg est recu
+        self.last_item_clicked = None
 
         self.resize(800, 700)
-        self.setWindowTitle("Login / Logout")
+        self.setWindowTitle("Login page")
 
         self.centralwidget = QWidget(self)
         self.stackedWidget = QStackedWidget(self.centralwidget)
@@ -149,10 +154,10 @@ class MainWindow(QMainWindow):
 
         self.list_message_box = QListWidget(self.widget_3)
 
-        self.show_message_box = QLineEdit(self.widget_3)
+        self.show_message_box = QPlainTextEdit(self.widget_3)
         self.show_message_box.setMaximumSize(QtCore.QSize(16777215, 10000))
-        self.show_message_box.setText("")
         self.show_message_box.setReadOnly(True)
+
 
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -178,9 +183,58 @@ class MainWindow(QMainWindow):
 
         self.show()
 
-        self.bind_socket()
+        #self.bind_socket()
 #        t = Thread(target=self.receive_msg, args=(), name="receive_socket_msg").start()
 #        self.thread.append(t)
+
+        self.private_msg_btn.clicked.connect(self.btn_private_clicked)
+        self.channel_msg_btn.clicked.connect(self.btn_channel_clicked)
+        self.list_message_box.itemClicked.connect(self.handle_btn_msg)
+        self.btn_submit_login.clicked.connect(self.handle_login)
+        self.btn_switch_to_register.clicked.connect(self.switch_register_login)
+
+
+    def handle_login(self):
+        "ici c'est seulement la logique de login / register"
+        if self.is_login_page:
+            "il n'a pas switch sur la page de register, il veut donc se log"
+        else:
+            "il veut se register"
+
+    def switch_register_login(self):
+        if self.is_login_page:
+            self.btn_switch_to_register.setText("LOGIN PAGE")
+            self.btn_submit_login.setText("SUBMIT REGISTER")
+            self.username_label_login.setText("NEW USERNAME")
+            self.password_label_login.setText("NEW PASSWORD")
+            self.is_login_page = False
+        else:
+            self.btn_switch_to_register.setText("REGISTER PAGE")
+            self.btn_submit_login.setText("SUBMIT LOGIN")
+            self.username_label_login.setText("USERNAME")
+            self.password_label_login.setText("PASSWORD")
+            self.is_login_page = True
+
+
+
+    def handle_btn_msg(self, item):
+        if self.last_item_clicked != item.text().split("[")[0]:
+
+            self.show_message_box.setPlainText("\n".join(self.cache[item.text().split("[")[0]]))
+            self.last_item_clicked = item.text().split("[")[0]
+
+
+    def btn_channel_clicked(self):
+        if not self.is_mp_btn_clicked:
+            return
+        self.setup_public_msg()
+        self.is_mp_btn_clicked = False
+    def btn_private_clicked(self):
+        if self.is_mp_btn_clicked:
+            return
+        self.setup_private_msg()
+        self.is_mp_btn_clicked = True
+
 
 
     def bind_socket(self):
@@ -200,7 +254,7 @@ class MainWindow(QMainWindow):
 
     def setup_public_msg(self):
         self.list_message_box.clear()
-        self.show_message_box.setText("")
+        self.show_message_box.clear()
 
         channels = ["Général", "Blabla", "Comptabilité", "Informatique", "Marketing"]
 
@@ -210,6 +264,17 @@ class MainWindow(QMainWindow):
             item.setText(channel)
             self.list_message_box.addItem(item)
 
+    def setup_private_msg(self):
+        self.list_message_box.clear()
+        self.show_message_box.clear()
+
+        for user, status in self.user_status.items():
+            item = QListWidgetItem()
+            item.setTextAlignment(QtCore.Qt.AlignCenter)
+            item.setText(f"{user} [{status.upper()}]")
+            self.list_message_box.addItem(item)
+
+
     def receive_msg(self):
         ...
 
@@ -217,12 +282,21 @@ class MainWindow(QMainWindow):
     def close_app(self):
         self.is_running = False
         try:
+            self.set_status(status="deconnected")
             self.s.send(str.encode(json.dumps({'close': True})))
             self.s.close()
         except:
             pass
         QApplication.closeAllWindows()
         sys.exit()
+
+    def set_status(self, status="connected"):
+        self.s.send(str.encode(json.dumps({'status': status, "user": self.username})))
+
+    def get_status(self):
+        self.s.send(str.encode(json.dumps({'get_status': True, "user": self.username})))
+
+
 
 
 
