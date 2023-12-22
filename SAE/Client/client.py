@@ -1,10 +1,23 @@
+
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QGridLayout, QSpacerItem, QSizePolicy, QLabel, QLineEdit, QPushButton, QMainWindow, QFrame, QVBoxLayout, QStackedWidget, QHBoxLayout, QListWidget, QListWidgetItem
+from PyQt5.QtWidgets import QApplication, QWidget, QGridLayout, QSpacerItem, QMessageBox, QSizePolicy, QLabel, QLineEdit, QPushButton, QMainWindow, QFrame, QVBoxLayout, QStackedWidget, QHBoxLayout, QListWidget, QListWidgetItem
 from PyQt5 import QtGui, QtCore
+from threading import Thread
+import socket
+import json
+
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, ip:str, port:int):
         super().__init__()
+
+        self.is_running = True
+        self.is_mp_btn_clicked = False
+        self.is_public_btn_clicked = False
+        self.ip = ip
+        self.port = port
+        self.thread = []
+
 
         self.resize(800, 700)
         self.setWindowTitle("Login / Logout")
@@ -136,8 +149,6 @@ class MainWindow(QMainWindow):
 
         self.list_message_box = QListWidget(self.widget_3)
 
-        self.setup_public_msg()
-
         self.show_message_box = QLineEdit(self.widget_3)
         self.show_message_box.setMaximumSize(QtCore.QSize(16777215, 10000))
         self.show_message_box.setText("")
@@ -161,10 +172,34 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.stackedWidget)
 
+        self.setup_public_msg()
+
         self.stackedWidget.setCurrentIndex(0)
+
+        self.bind_socket()
+        t = Thread(target=self.receive_msg, args=(), name="receive_socket_msg").start()
+        self.thread.append(t)
+
+
+    def bind_socket(self):
+        self.s = socket.socket()
+        try:
+            self.s.connect((self.ip, self.port))
+        except Exception as e:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText("Error connecting with the server, closing App in 5s")
+            msg.setInformativeText(f'{e}')
+            msg.setWindowTitle("Error")
+            msg.exec_()
+            "sleep pendant 5s"
+            self.close_app()
+            "l'appli ne se ferme pas jsp pq"
+
 
     def setup_public_msg(self):
         self.list_message_box.clear()
+        self.show_message_box.setText("")
 
         channels = ["Général", "Blabla", "Comptabilité", "Informatique", "Marketing"]
 
@@ -174,9 +209,22 @@ class MainWindow(QMainWindow):
             item.setText(channel)
             self.list_message_box.addItem(item)
 
+    def receive_msg(self):
+        ...
+
+
+    def close_app(self):
+        self.is_running = False
+        try:
+            self.s.send(str.encode(json.dumps({'close': True})))
+            self.s.close()
+        except:
+            pass
+        QApplication.exit(0)
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    window = MainWindow()
+    window = MainWindow(ip="1",port=9999)
     window.show()
     sys.exit(app.exec_())
