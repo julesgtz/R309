@@ -208,12 +208,14 @@ class MainWindow(QMainWindow):
             self.username_label_login.setText("NEW USERNAME")
             self.password_label_login.setText("NEW PASSWORD")
             self.is_login_page = False
+            self.setWindowTitle("Register page")
         else:
             self.btn_switch_to_register.setText("REGISTER PAGE")
             self.btn_submit_login.setText("SUBMIT LOGIN")
             self.username_label_login.setText("USERNAME")
             self.password_label_login.setText("PASSWORD")
             self.is_login_page = True
+            self.setWindowTitle("Login page")
 
 
 
