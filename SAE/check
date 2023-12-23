@@ -1,0 +1,7 @@
+reste a faire :
+    - handle reply sur le client
+    - gestion pour l'acces aux channels sur le serveur et le client
+    - finir le helper.py
+    - ajouter le compte admin
+    - mettre un login / mdp admin sur le serv pour pouvoir accepter ou refuser des demandes d'acces au channels
+    - Bouton logout
