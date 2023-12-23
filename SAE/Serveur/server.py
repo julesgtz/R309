@@ -5,7 +5,8 @@ from helper import *
 import json
 import ipaddress
 import os
-
+# des qu'on accepte une demande de join de channels, envoyer un msg au client
+# des qu'un user se log, il veut savoir sur quels channels il a acces
 
 
 class Server:
