@@ -142,13 +142,13 @@ class Server:
                     is_ban = check_ban(user=reply.get("user"), ip=ip, connexion=self.connexion)
                     if is_ban:
                         "renvoie false si ban"
-                        client.send(str.encode(json.dumps({'login': False, 'ban': True})))
+                        client.send(str.encode(json.dumps({'login_msg': True, 'login': False, 'ban': True})))
                         return logged
 
                     is_kick, duree = check_kick(user=reply.get("user"), ip=ip, connexion=self.connexion)
                     if is_kick:
                         "renvoie false si kick"
-                        client.send(str.encode(json.dumps({'login': False, 'kick': duree})))
+                        client.send(str.encode(json.dumps({'login_msg': True, 'login': False, 'kick': duree})))
                         return logged
                         
                     username, password = get_user_pwd(reply.get("user"), connexion=self.connexion)
@@ -156,15 +156,15 @@ class Server:
                         "check si username / pwd concordent"
                         logged = True
                         self.user_conn[username] = client
-                        client.send(str.encode(json.dumps({'login': True})))
+                        client.send(str.encode(json.dumps({'login_msg': True, 'login': True})))
                         return logged
                     else:
                         "Username/pwd incorrect"
-                        client.send(str.encode(json.dumps({'login': False, 'need_register': False})))
+                        client.send(str.encode(json.dumps({'login_msg': True, 'login': False, 'need_register': False})))
 
                 else:
                     "User existe pas, doit se register"
-                    client.send(str.encode(json.dumps({'login': False, 'need_register': True})))
+                    client.send(str.encode(json.dumps({'login_msg': True, 'login': False, 'need_register': True})))
                     
             elif register:
                 "Pour le register check si la personne a bien mis aucun espace etc ect (surement le faire depuis le client , a voir)"
@@ -175,12 +175,12 @@ class Server:
                 user_exist = check_user_exist(user=reply.get("user"), connexion=self.connexion)
                 if user_exist:
                     "L'utilisateur existe deja, il doit se connecter alors ou se register avec un autre username, le client va lui afficher un message d'erreur, il devra recliquer sur register"
-                    client.send(str.encode(json.dumps({'register': False})))
+                    client.send(str.encode(json.dumps({'register_msg': True,'register': False})))
                 else:
                     "l'user existe pas, le serveur l'enregiste, renvoie dans la boucle, l'user doit se connecter"
                     register_user(user=reply.get("user"), password=reply.get("password"), ip=ip,
                                   connexion=self.connexion)
-                    client.send(str.encode(json.dumps({'register': True})))
+                    client.send(str.encode(json.dumps({'register_msg': True,'register': True})))
         else:
             "si il est log, sort de la boucle et renvoie True pour hdl les messages"
             return logged
@@ -255,10 +255,10 @@ class Server:
             is_banned = check_ban(user=message.get("user"), ip=ip, connexion=self.connexion)
             is_kicked, duree = check_kick(user=message.get("user"), ip=ip, connexion=self.connexion)
             if is_banned:
-                client.send(str.encode(json.dumps({'login': False, 'ban': True})))
+                client.send(str.encode(json.dumps({'login_msg': True, 'login': False, 'ban': True})))
                 return "stop_connexion"
             if is_kicked:
-                client.send(str.encode(json.dumps({'login': False, 'kick': duree})))
+                client.send(str.encode(json.dumps({'login_msg': True, 'login': False, 'kick': duree})))
                 return "stop_connexion"
 
             users = get_all_user_name(connexion=self.connexion)
@@ -286,7 +286,7 @@ class Server:
                                  username=message.get("user"), connexion=self.connexion)
             conn = self.user_conn.get(message.get("other_user"))
             conn.send(str.encode(json.dumps(
-                {"private_message": is_channel_msg, "user": message.get("user"),})))
+                {"private_message": is_channel_msg, "user": message.get("user")})))
             return None
 
 

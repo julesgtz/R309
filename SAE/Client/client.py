@@ -208,7 +208,48 @@ class MainWindow(QMainWindow):
         event.accept()
 
     def handle_reply(self, reply):
-        ...
+        is_login = reply.get("login_msg", None)
+        is_register = reply.get("register_msg", None)
+        is_channel_message = reply.get("channel_message", None)
+        is_private_message = reply.get("private_message", None)
+        is_command = reply.get("command", None)
+        is_kill = reply.get("kill", None)
+        is_get_status = reply.get("get_status", None) #voir si le gars est pas dans la liste actuelle, ajouter le bouton
+
+        print(reply) #debug
+
+        if is_register:
+            return reply.get("register") #True / False si bien registered ou pas
+
+        elif is_login:
+            is_logged = reply.get("login", False)
+            is_banned = reply.get("ban", False)
+            kick_time = reply.get("kick", False)
+            need_register = reply.get("need_register", False)
+            return is_logged, is_banned, kick_time, need_register
+
+        elif is_channel_message:
+            message = is_channel_message
+            sender = reply.get("user", None)
+            channel_name = reply.get("channel", None)
+            self.cache[channel_name].append(f"{sender}> {message}")
+
+            if self.last_item_clicked == channel_name:
+                self.show_message_box.appendPlainText(f"{sender}> {message}")
+
+        elif is_private_message:
+            message = is_private_message
+            sender = reply.get("user", None)
+            if not self.cache.get("sender", False):
+                self.cache[sender] = []
+            self.cache[sender].append(f"{sender}> {message}")
+
+            if self.last_item_clicked == sender:
+                self.show_message_box.appendPlainText(f"{sender}> {message}")
+
+        elif is_command:
+            ...
+
 
 
     def handle_login(self):
