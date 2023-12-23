@@ -6,7 +6,8 @@ from threading import Thread
 import socket
 import json
 from time import sleep
-
+from PyQt5.QtCore import QRegExp
+from PyQt5.QtGui import QRegExpValidator
 
 class MainWindow(QMainWindow):
     def __init__(self, ip:str, port:int):
@@ -54,7 +55,9 @@ class MainWindow(QMainWindow):
         self.username_line_edit_login.setMaximumSize(QtCore.QSize(300, 16777215))
         self.username_line_edit_login.setFont(font)
         self.username_line_edit_login.setText("")
-
+        regex = QRegExp("^[a-zA-Z0-9]+$")
+        validator = QRegExpValidator(regex, self.username_line_edit_login)
+        self.username_line_edit_login.setValidator(validator)
 
 
         font = QtGui.QFont()
@@ -76,10 +79,14 @@ class MainWindow(QMainWindow):
         self.password_line_edit_login.setMaximumSize(QtCore.QSize(300, 16777215))
         self.password_line_edit_login.setFont(font)
         self.password_line_edit_login.setText("")
+        regex = QRegExp("^[A-Za-z\d@$!%*?&]*$")
+        validator = QRegExpValidator(regex, self.password_line_edit_login)
+        self.password_line_edit_login.setValidator(validator)
 
-        self.login_layout.addWidget(self.username_line_edit_login, 1, 1, 1, 1)
+
+        self.login_layout.addWidget(self.username_line_edit_login, 0, 1, 1, 1)
         self.login_layout.addWidget(self.username_label_login, 0, 0, 1, 1)
-        self.login_layout.addWidget(self.password_line_edit_login, 0, 1, 1, 1)
+        self.login_layout.addWidget(self.password_line_edit_login, 1, 1, 1, 1)
         self.login_layout.addWidget(self.password_label_login, 1, 0, 1, 1)
 
         self.login_page.addWidget(self.frame)
@@ -192,12 +199,43 @@ class MainWindow(QMainWindow):
         self.list_message_box.itemClicked.connect(self.handle_btn_msg)
         self.btn_submit_login.clicked.connect(self.handle_login)
         self.btn_switch_to_register.clicked.connect(self.switch_register_login)
+    def handle_reply(self, reply):
+        ...
 
 
     def handle_login(self):
         "ici c'est seulement la logique de login / register"
         if self.is_login_page:
             "il n'a pas switch sur la page de register, il veut donc se log"
+#            __reply = self.s.recv(1024).decode()
+            __reply = True
+            if __reply:
+                #check si username n'a pas de caractere spéciaux, espace etc etc, pareil pour le mdp
+                username = self.username_line_edit_login.text()
+
+                if not username:
+                    return QMessageBox.warning(self, "Erreur", "Veuillez entrer un nom d'utilisateur.")
+                elif len(username) < 3:
+                    return QMessageBox.warning(self, "Erreur", "Le nom d'utilisateur doit contenir au moins 3 caractères.")
+                elif len(username) > 20:
+                    return QMessageBox.warning(self, "Erreur", "Le nom d'utilisateur doit contenir moins de 20 caractères.")
+
+                password = self.password_line_edit_login.text()
+
+                if not password:
+                    return QMessageBox.warning(self, "Erreur", "Veuillez entrer un password.")
+                elif len(password) < 3:
+                    return QMessageBox.warning(self, "Erreur", "Le password doit contenir au moins 3 caractères.")
+                elif len(password) > 20:
+                    return QMessageBox.warning(self, "Erreur", "Le password doit contenir moins de 20 caractères.")
+
+                self.s.send(str.encode(json.dumps({'login': True, "user": username, "password": password})))
+                __reply = self.s.recv(1024).decode()
+                reply = json.loads(__reply)
+                self.handle_reply(reply)
+                # c a lui de mettre la page d'erreur etc etc si jamais il y'a mauvais mdp ou pwd
+            else:
+                "erreur avec le serv"
         else:
             "il veut se register"
 
