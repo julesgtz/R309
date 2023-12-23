@@ -26,7 +26,7 @@ class MainWindow(QMainWindow):
         self.last_item_clicked = None
 
         self.resize(800, 700)
-        self.setWindowTitle("Login page")
+        self.setWindowTitle("Chat APP | Login page")
 
         self.centralwidget = QWidget(self)
         self.stackedWidget = QStackedWidget(self.centralwidget)
@@ -232,7 +232,22 @@ class MainWindow(QMainWindow):
                 self.s.send(str.encode(json.dumps({'login': True, "user": username, "password": password})))
                 __reply = self.s.recv(1024).decode()
                 reply = json.loads(__reply)
-                self.handle_reply(reply)
+                is_logged, is_banned, kick_time, need_register = self.handle_reply(reply)
+                if is_logged:
+                    self.stackedWidget.setCurrentIndex(1)
+                    self.setWindowTitle(f"Chat APP | Connecté en tant que : {username}")
+                    self.username = username
+                elif is_banned:
+                    return QMessageBox.Critical(self, "Erreur", "Ton ip ou ton username est banni !")
+                elif kick_time:
+                    return QMessageBox.Critical(self, "Erreur", f"Ton ip ou ton username est kick jusqu'au {kick_time} !")
+                elif not is_logged and need_register:
+                    return QMessageBox.warning(self, "User Inexistant",f"Tu as besoin de te register, aucun compte existe au nom d'{username}")
+                elif not is_logged and not need_register:
+                    return QMessageBox.warning(self, "User / mdp incorrect",f"Cette combinaison d'username / mdp n'est pas la bonne, réessaye !")
+                else:
+                    return print("Aucune idée du soucis")
+
                 # c a lui de mettre la page d'erreur etc etc si jamais il y'a mauvais mdp ou pwd
             else:
                 "erreur avec le serv"
