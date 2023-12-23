@@ -1,7 +1,13 @@
 reste a faire :
+    - fix soucis, quand j'envoie un msg avec "login": false, quand je fais is_logged = x.get("login",False),
+    \ je suis sencé trigger le if is_logged: sauf que non car c'est false
+    \ peut etre mettre login_state = True a chaque login msg, et mettre login apres en true false et pareil pour register
     - handle reply sur le client
     - gestion pour l'acces aux channels sur le serveur et le client
     - finir le helper.py
     - ajouter le compte admin
     - mettre un login / mdp admin sur le serv pour pouvoir accepter ou refuser des demandes d'acces au channels
     - Bouton logout
+    - readme par sections
+    - doc client
+    - tests sur vm avec ban / kick ...
