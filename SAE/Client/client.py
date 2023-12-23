@@ -22,8 +22,9 @@ class MainWindow(QMainWindow):
         self.user_status = {"Cheval":"deco","marie":"connected","test":"test"}
         self.username = ""
         self.cache = {"Général": ["moi -> test", "charles -> awee"], "Blabla": ["salut"], "Comptabilité": [], "Informatique": [], "Marketing": []}
-        #ajoute au buffer des qu'un msg est recu
+        #ajoute au buffer des qu'un msg est recu (pour les channels, check si l'user a bien acces aux channels)
         self.last_item_clicked = None
+        self.channels_join = {} # nom du channel : status ( accepted / pending / refused )
 
         self.resize(800, 700)
         self.setWindowTitle("Chat APP | Login page")
@@ -193,46 +194,58 @@ class MainWindow(QMainWindow):
         #self.bind_socket()
 #        t = Thread(target=self.receive_msg, args=(), name="receive_socket_msg").start()
 #        self.thread.append(t)
+        #t = Thread(target=self.get_status, args=(), name="get_status").start()
+        #self.thread.append(t)
 
         self.private_msg_btn.clicked.connect(self.btn_private_clicked)
         self.channel_msg_btn.clicked.connect(self.btn_channel_clicked)
         self.list_message_box.itemClicked.connect(self.handle_btn_msg)
         self.btn_submit_login.clicked.connect(self.handle_login)
         self.btn_switch_to_register.clicked.connect(self.switch_register_login)
+
+    def closeEvent(self, event):
+        self.close_app()
+        event.accept()
+
     def handle_reply(self, reply):
         ...
 
 
     def handle_login(self):
         "ici c'est seulement la logique de login / register"
+
+        # check si username n'a pas de caractere spéciaux, espace etc etc, pareil pour le mdp
+
+        username = self.username_line_edit_login.text()
+
+        if not username:
+            return QMessageBox.warning(self, "Erreur", "Veuillez entrer un nom d'utilisateur.")
+        elif len(username) < 3:
+            return QMessageBox.warning(self, "Erreur", "Le nom d'utilisateur doit contenir au moins 3 caractères.")
+        elif len(username) > 20:
+            return QMessageBox.warning(self, "Erreur", "Le nom d'utilisateur doit contenir moins de 20 caractères.")
+
+        password = self.password_line_edit_login.text()
+
+        if not password:
+            return QMessageBox.warning(self, "Erreur", "Veuillez entrer un password.")
+        elif len(password) < 3:
+            return QMessageBox.warning(self, "Erreur", "Le password doit contenir au moins 3 caractères.")
+        elif len(password) > 20:
+            return QMessageBox.warning(self, "Erreur", "Le password doit contenir moins de 20 caractères.")
+
         if self.is_login_page:
             "il n'a pas switch sur la page de register, il veut donc se log"
-#            __reply = self.s.recv(1024).decode()
-            __reply = True
+            __reply = self.s.recv(1024).decode()
+#            __reply = True
             if __reply:
-                #check si username n'a pas de caractere spéciaux, espace etc etc, pareil pour le mdp
-                username = self.username_line_edit_login.text()
-
-                if not username:
-                    return QMessageBox.warning(self, "Erreur", "Veuillez entrer un nom d'utilisateur.")
-                elif len(username) < 3:
-                    return QMessageBox.warning(self, "Erreur", "Le nom d'utilisateur doit contenir au moins 3 caractères.")
-                elif len(username) > 20:
-                    return QMessageBox.warning(self, "Erreur", "Le nom d'utilisateur doit contenir moins de 20 caractères.")
-
-                password = self.password_line_edit_login.text()
-
-                if not password:
-                    return QMessageBox.warning(self, "Erreur", "Veuillez entrer un password.")
-                elif len(password) < 3:
-                    return QMessageBox.warning(self, "Erreur", "Le password doit contenir au moins 3 caractères.")
-                elif len(password) > 20:
-                    return QMessageBox.warning(self, "Erreur", "Le password doit contenir moins de 20 caractères.")
 
                 self.s.send(str.encode(json.dumps({'login': True, "user": username, "password": password})))
                 __reply = self.s.recv(1024).decode()
                 reply = json.loads(__reply)
+
                 is_logged, is_banned, kick_time, need_register = self.handle_reply(reply)
+
                 if is_logged:
                     self.stackedWidget.setCurrentIndex(1)
                     self.setWindowTitle(f"Chat APP | Connecté en tant que : {username}")
@@ -248,11 +261,23 @@ class MainWindow(QMainWindow):
                 else:
                     return print("Aucune idée du soucis")
 
-                # c a lui de mettre la page d'erreur etc etc si jamais il y'a mauvais mdp ou pwd
             else:
                 "erreur avec le serv"
         else:
             "il veut se register"
+            __reply = self.s.recv(1024).decode()
+            #            __reply = True
+            if __reply:
+                self.s.send(str.encode(json.dumps({'register': True, "user": username, "password": password})))
+                __reply = self.s.recv(1024).decode()
+                reply = json.loads(__reply)
+                is_registered = self.handle_reply(reply)
+                if is_registered:
+                    return QMessageBox.information(self, "Register", "Vous avez bien été enregistré")
+                else:
+                    return QMessageBox.warning(self, "User Existant",f"L'username : {username} existe déjà")
+
+
 
     def switch_register_login(self):
         if self.is_login_page:
@@ -331,7 +356,12 @@ class MainWindow(QMainWindow):
 
 
     def receive_msg(self):
-        ...
+        while self.is_running:
+            __reply = self.s.recv(1024).decode()
+            reply = json.loads(__reply)
+            self.handle_reply(reply)
+
+
 
 
     def close_app(self):
@@ -349,7 +379,9 @@ class MainWindow(QMainWindow):
         self.s.send(str.encode(json.dumps({'status': status, "user": self.username})))
 
     def get_status(self):
-        self.s.send(str.encode(json.dumps({'get_status': True, "user": self.username})))
+        while self.is_running:
+            self.s.send(str.encode(json.dumps({'get_status': True, "user": self.username})))
+            sleep(5)
 
 
 
