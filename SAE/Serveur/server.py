@@ -150,6 +150,11 @@ class Server:
                         "renvoie false si kick"
                         client.send(str.encode(json.dumps({'login_msg': True, 'login': False, 'kick': duree})))
                         return logged
+
+                    if reply.get("user") in self.user_conn:
+                        client.send(str.encode(json.dumps({'login_msg': True, 'login': False, 'already_logged': True})))
+                        return logged
+
                         
                     username, password = get_user_pwd(reply.get("user"), connexion=self.connexion)
                     if username == reply.get("user") and password == reply.get("password"):
@@ -256,10 +261,13 @@ class Server:
             is_kicked, duree = check_kick(user=message.get("user"), ip=ip, connexion=self.connexion)
             if is_banned:
                 client.send(str.encode(json.dumps({'login_msg': True, 'login': False, 'ban': True})))
-                return "stop_connexion"
+                return None
+                #le client renvoie stop_connexion
+
             if is_kicked:
                 client.send(str.encode(json.dumps({'login_msg': True, 'login': False, 'kick': duree})))
-                return "stop_connexion"
+                return None
+                #le client renvoie stop_connexion
 
             users = get_all_user_name(connexion=self.connexion)
             self.user_status.update({user: "deconnected" for user in users if user not in self.user_status})
@@ -356,7 +364,7 @@ class Server:
     def __client_hdl(self, new_client, ip):
         closed = False
         while not closed:
-            new_client.send(str.encode("True"))
+            #new_client.send(str.encode("True"))
             is_logged = self.__credential_checker(client=new_client, ip=ip)
             "Il faut check si l'utilisateur ne ferme pas le client durant la connexion !!"
             if is_logged:
