@@ -248,7 +248,26 @@ class MainWindow(QMainWindow):
                 self.show_message_box.appendPlainText(f"{sender}> {message}")
 
         elif is_command:
-            ...
+            if is_command == "Not allowed":
+                return QMessageBox.Critical(self, "Erreur Commande", "Tu n'as pas le droit d'effectuer une commande")
+            else:
+                return QMessageBox.information(self, "Info Commande", f"Votre commande a été effectué \n réponse du serveur : {is_command}")
+
+        elif is_kill:
+            if is_command == "Not allowed":
+                return QMessageBox.Critical(self, "Erreur Kill", "Tu n'as pas le droit de kill le serveur")
+            else:
+                QMessageBox.information(self, "Kill", f"Le serveur doit s'arrêter")
+                return self.close_app()
+
+        elif is_get_status:
+            self.user_status = is_get_status
+            if self.user_status.get(self.last_item_clicked, False):
+                #l'user est dans la section private msg donc il faut update les boutons
+                self.setup_private_msg()
+
+
+
 
 
 
