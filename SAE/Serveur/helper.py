@@ -168,6 +168,31 @@ FONCTIONS SET ( PERMETTANT DE MODIFIER LA BASE DE DONNEE )
 //////////////////////////////////
 """
 
+def set_new_channel_rq(connexion, username, channel_name, status="pending"):
+    """
+    Ajoute une nouvelle requête pour rejoindre un canal
+    :param connexion: Connexion avec la base de données
+    :param username: Nom de l'utilisateur faisant la demande
+    :param channel_name: Nom du channel pour lequel la demande est faite
+    :return:
+    """
+    user_id = get_user_id(username, connexion)
+    channel_id = get_channel_id(channel_name, connexion)
+
+    cursor = connexion.cursor()
+
+    try:
+        rq = "INSERT INTO ChannelRequests (channelID, userID) VALUES (%s, %s, %s)"
+        cursor.execute(rq, (channel_id, user_id, status))
+
+        connexion.commit()
+    except mysql.connector.Error as err:
+        connexion.rollback()
+        print(f"Erreur lors de l'ajout de la nouvelle requête vers le canal : {err}")
+        return
+    finally:
+        cursor.close()
+
 
 def set_status_channel_rq(connexion, accept=False, refuse=False, request_id=None):
     """
@@ -516,6 +541,34 @@ def get_channel_id(channel_name, connexion):
     finally:
         cursor.close()
 
+def get_joined_channel_rq(connexion, username):
+    """
+    Récupère les informations des demandes de canal pour un utilisateur donné
+    :param connexion: Connexion avec la base de données
+    :param username: Nom de l'utilisateur
+    :return: Dictionnaire avec le nom du canal en clé et le statut en valeur
+    """
+    cursor = connexion.cursor(dictionary=True)
+
+    try:
+        user_id = get_user_id(username, connexion)
+
+        rq = "SELECT Channels.channel_name, ChannelRequests.status " \
+             "FROM ChannelRequests " \
+             "JOIN Channels ON ChannelRequests.channelID = Channels.channelID " \
+             "WHERE ChannelRequests.userID = %s"
+        cursor.execute(rq, (user_id,))
+        result = cursor.fetchall()
+
+        joined_channels = {row['channel_name']: row['status'] for row in result}
+
+        return joined_channels
+
+    except mysql.connector.Error as err:
+        print(f"Erreur lors de la récupération des demandes de canal pour l'utilisateur : {err}")
+        return None
+    finally:
+        cursor.close()
 
 def get_user_id(user, connexion):
     """
