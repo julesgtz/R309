@@ -233,6 +233,8 @@ class Server:
 
         is_join_channel = message.get("join", None)
         "Si l'utilisateur veut join un channel"
+        is_get_joined = message.get("get_joined", None)
+        "l'user veut recuperer les channels auquels il a acces"
         
         is_command = message.get("command", None)
         "Si l'utilisateur veut effectuer une commande"
@@ -352,10 +354,22 @@ class Server:
 
         elif is_join_channel:
             user = message.get("user")
-            if message.get("status", None):
-                "recupere le status , est ce que il est accepter ou refuser ou rien de toutes les requetes de l'user"
+            channel_name = message.get("channel")
+            if get_channel_acceptation(channel_name=channel_name, connexion=self.connexion):
+                set_new_channel_rq(connexion=self.connexion, username=user, channel_name=channel_name)
             else:
-                "demande pour rejoindre un channel"
+                set_new_channel_rq(connexion=self.connexion, username=user, channel_name=channel_name, status="accept")
+                client.send(str.encode(json.dumps({'join': True, "channel_name":channel_name, "status":"accept"})))
+            return None
+
+        elif is_get_joined:
+            user = message.get("user")
+            _ = get_joined_channel_rq(connexion=self.connexion, username=user)
+            dict = {"get_joined": True, "dict": _}
+            client.send(str.encode(json.dumps(dict)))
+            return None
+
+
 
 
         else:
