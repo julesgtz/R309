@@ -5,6 +5,7 @@ from helper import *
 import json
 import ipaddress
 import os
+import re
 # des qu'on accepte une demande de join de channels, envoyer un msg au client
 # des qu'un user se log, il veut savoir sur quels channels il a acces
 
@@ -39,8 +40,32 @@ class Server:
         """
         Permet au server d'accepter / refuser les requêtes pour rejoindre un channel
         """
-        need_refresh = False
+        # doit faire en sorte que de se log sur admin, ne pas proposé un username mais seulement un mdp
+        logged= False
+
+        username, password_to_find = get_user_pwd("admin", connexion=self.connexion)
+
+        while not logged and self.running:
+            print("Vous devez vous log pour pouvoir Accepter / refuser des demandes pour rejoindre des channels")
+            print("Username : admin")
+            password = str(input("Password : "))
+
+            os.system('cls' if os.name == 'nt' else 'clear')
+
+            if re.match(r'^[A-Za-z\d@$!%*?&]*$', password):
+                if password == password_to_find:
+                    logged = True
+                    print("Vous êtes log !")
+                else:
+                    print("Mauvais mot de passe \n")
+            else:
+                print("Le mot de passe ne correspond pas aux critères, réessayez \n")
+
+
+
         while self.running:
+            need_refresh = False
+
             need_accept = get_channel_rq(connexion=self.connexion)
 
             os.system('cls' if os.name == 'nt' else 'clear')
@@ -88,8 +113,12 @@ class Server:
                                 reponse = True
                             elif reponse.lower() == 'a' or 'accepter':
                                 set_status_channel_rq(connexion=self.connexion, accept=True, request_id=request_id)
+                                self.user_conn[user_name].send(str.encode(json.dumps({'join': True, "channel_name":channel_name, "status":"accept"})))
+
                             elif reponse.lower() == 'r' or 'refuser':
                                 set_status_channel_rq(connexion=self.connexion, refuse=True, request_id=request_id)
+                                self.user_conn[user_name].send(str.encode(json.dumps({'join': True, "channel_name":channel_name, "status":"refuse"})))
+
                             else:
                                 print(f"{reponse} n'existe pas")
                                 reponse = None

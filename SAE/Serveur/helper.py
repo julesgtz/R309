@@ -419,7 +419,7 @@ def get_user_pwd(user, connexion):
         result = cursor.fetchone()
         if result:
             password = result[0]
-            return f"user:{password}"
+            return user, password
         else:
             return None
     except mysql.connector.Error as err:
