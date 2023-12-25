@@ -6,10 +6,10 @@ reste a faire :
     - handle reply sur le client (good)
     - fix si jamais un user se log sur 2 pc (good je pense)
     - gestion pour l'acces aux channels sur le serveur et le client (good)
-    - recuperer les channels auquel l'user a acces au log in
+    - recuperer les channels auquel l'user a acces au log in (good)
     - finir le helper.py ( TESTER TOUTES LES REQUETES + DELETE LES FUNCTIONS QUI SERVENT A KETCHI)
     - ajouter le compte admin ( a faire depuis le client imo )
-    - mettre un login / mdp admin sur le serv pour pouvoir accepter ou refuser des demandes d'acces au channels
+    - mettre un login / mdp admin sur le serv pour pouvoir accepter ou refuser des demandes d'acces au channels (good je pense)
     - Bouton logout
     - readme par sections
     - doc client
