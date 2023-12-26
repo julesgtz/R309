@@ -1,6 +1,9 @@
-from client import Client
+from client import MainWindow
 import argparse
 import ipaddress
+import sys
+from PyQt5.QtWidgets import QApplication
+
 def args_checker(args):
     """
     Permet de verifier si les arguments entrés sont bon
@@ -41,5 +44,7 @@ if __name__ == "__main__":
     is_args_good = args_checker(args)
 
     if is_args_good:
-        Client(ip=args['i'], port=args['p']).start()
+        app = QApplication(sys.argv)
+        MainWindow(ip=args['i'], port=args['p'])
+        app.exec()
 

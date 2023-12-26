@@ -165,6 +165,8 @@ class Server:
             __reply = client.recv(1024).decode()
             reply = json.loads(__reply)
 
+            print(reply)
+
             login = reply.get("login", None)
             register = reply.get("register", None)
             if login:
@@ -184,7 +186,6 @@ class Server:
 
                     if reply.get("user") in self.user_conn:
                         client.send(str.encode(json.dumps({'login_msg': True, 'login': False, 'already_logged': True})))
-                        return logged
 
                         
                     username, password = get_user_pwd(reply.get("user"), connexion=self.connexion)
@@ -205,15 +206,15 @@ class Server:
             elif register:
                 "Pour le register check si la personne a bien mis aucun espace etc ect (surement le faire depuis le client , a voir)"
                 "L'user veut se register, le serveur attend sa nouvelle requete avec l'username et password"
-                __reply = client.recv(1024).decode()
-                reply = json.loads(__reply)
 
                 user_exist = check_user_exist(user=reply.get("user"), connexion=self.connexion)
+                print(user_exist)
                 if user_exist:
                     "L'utilisateur existe deja, il doit se connecter alors ou se register avec un autre username, le client va lui afficher un message d'erreur, il devra recliquer sur register"
                     client.send(str.encode(json.dumps({'register_msg': True,'register': False})))
                 else:
                     "l'user existe pas, le serveur l'enregiste, renvoie dans la boucle, l'user doit se connecter"
+                    print(reply.get("user"), reply.get("password"), ip)
                     register_user(user=reply.get("user"), password=reply.get("password"), ip=ip,
                                   connexion=self.connexion)
                     client.send(str.encode(json.dumps({'register_msg': True,'register': True})))
@@ -304,11 +305,12 @@ class Server:
 
             users = get_all_user_name(connexion=self.connexion)
             self.user_status.update({user: "deconnected" for user in users if user not in self.user_status})
+            print(self.user_status)
             client.send(str.encode(json.dumps({'get_status': self.user_status})))
             return None
 
         elif is_set_status:
-            self.user_status[message.get("user")] = message.get("status")
+            self.user_status[message.get("user")] = message.get("set_status")
             return None
 
 
@@ -393,6 +395,7 @@ class Server:
             if get_channel_acceptation(channel_name=channel_name, connexion=self.connexion):
                 set_new_channel_rq(connexion=self.connexion, username=user, channel_name=channel_name)
             else:
+                print('here')
                 set_new_channel_rq(connexion=self.connexion, username=user, channel_name=channel_name, status="accept")
                 client.send(str.encode(json.dumps({'join': True, "channel_name":channel_name, "status":"accept"})))
             return None
@@ -462,4 +465,8 @@ class Server:
             self.__accept_clients()
         else:
             print("ERROR")
+
+
+if __name__ == "__main__":
+    Server(ip="192.168.1.19", port=6530, max_user=3, ip_bdd="192.168.1.19").start()
 

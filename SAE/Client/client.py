@@ -19,13 +19,14 @@ class MainWindow(QMainWindow):
         self.ip = ip
         self.port = port
         self.thread = []
-        self.user_status = {"Cheval":"deco","marie":"connected","test":"test"}
+        self.user_status = {}
         self.username = ""
         self.cache = {"Général": ["moi -> test", "charles -> awee"], "Blabla": ["salut"], "Comptabilité": [], "Informatique": [], "Marketing": []}
         #ajoute au buffer des qu'un msg est recu (pour les channels, check si l'user a bien acces aux channels)
         self.last_item_clicked = None
         self.channels_join = {} # nom du channel : status ( accepted / pending / refused )
         self.channels = {"Général": "accept", "Blabla": None, "Comptabilité": None, "Informatique": None, "Marketing": None}
+        self.new_status = {}
 
 
         self.resize(800, 700)
@@ -193,7 +194,7 @@ class MainWindow(QMainWindow):
 
         self.show()
 
-        #self.bind_socket()
+        self.bind_socket()
 
         self.private_msg_btn.clicked.connect(self.btn_private_clicked)
         self.channel_msg_btn.clicked.connect(self.btn_channel_clicked)
@@ -239,6 +240,7 @@ class MainWindow(QMainWindow):
             if self.last_item_clicked == channel_name:
                 self.show_message_box.appendPlainText(f"{sender}> {message}")
 
+
         elif is_private_message:
             message = is_private_message
             sender = reply.get("user", None)
@@ -251,22 +253,25 @@ class MainWindow(QMainWindow):
 
         elif is_command:
             if is_command == "Not allowed":
-                return QMessageBox.Critical(self, "Erreur Commande", "Tu n'as pas le droit d'effectuer une commande")
+                QMessageBox.warning(self, "Erreur Commande", "Tu n'as pas le droit d'effectuer une commande")
             else:
-                return QMessageBox.information(self, "Info Commande", f"Votre commande a été effectué \n réponse du serveur : {is_command}")
+                QMessageBox.information(self, "Info Commande", f"Votre commande a été effectué \n réponse du serveur : {is_command}")
 
         elif is_kill:
             if is_command == "Not allowed":
-                return QMessageBox.Critical(self, "Erreur Kill", "Tu n'as pas le droit de kill le serveur")
+                QMessageBox.warning(self, "Erreur Kill", "Tu n'as pas le droit de kill le serveur")
             else:
                 QMessageBox.information(self, "Kill", f"Le serveur doit s'arrêter")
-                return self.close_app()
+                self.close_app()
 
         elif is_get_status:
+            print(reply)
+            del is_get_status[self.username]
             self.user_status = is_get_status
-            if self.user_status.get(self.last_item_clicked, False):
+            if self.user_status.get(self.last_item_clicked, False) or self.is_mp_btn_clicked:
                 #l'user est dans la section private msg donc il faut update les boutons
                 self.setup_private_msg()
+
 
         elif is_get_joined:
             dict = reply.get("dict")
@@ -276,8 +281,12 @@ class MainWindow(QMainWindow):
         elif is_join:
             channel_name = reply.get("channel_name")
             status = "accepté" if reply.get("status") == "accept" else "refusé"
+            self.new_status[channel_name] = status
             self.channels[channel_name] = reply.get("status")
-            QMessageBox.information(self, f"Demande Channel {channel_name}",f"Votre demande pour le channel {channel_name} a été {status}")
+            # QMessageBox.information(self, f"Demande Channel {channel_name}",f"Votre demande pour le channel {channel_name} a été {status}")
+
+        return False, False, False, False, False
+
 
 
 
@@ -313,26 +322,28 @@ class MainWindow(QMainWindow):
             if __reply:
 
                 self.s.send(str.encode(json.dumps({'login': True, "user": username, "password": password})))
+                print("sent")
                 __reply = self.s.recv(1024).decode()
                 reply = json.loads(__reply)
 
                 is_logged, is_banned, kick_time, need_register, already_logged = self.handle_reply(reply)
 
                 if is_logged:
-                    #t = Thread(target=self.receive_msg, args=(), name="receive_socket_msg").start()
-                    #self.thread.append(t)
-                    # t = Thread(target=self.get_status, args=(), name="get_status").start()
-                    # self.thread.append(t)
+                    t = Thread(target=self.receive_msg, args=(), name="receive_socket_msg").start()
+                    self.thread.append(t)
+                    t = Thread(target=self.get_status, args=(), name="get_status").start()
+                    self.thread.append(t)
                     self.s.send(str.encode(json.dumps({'get_joined': True, "user": username})))
                     self.stackedWidget.setCurrentIndex(1)
                     self.setWindowTitle(f"Chat APP | Connecté en tant que : {username}")
                     self.username = username
+                    self.set_status()
                 elif already_logged:
-                    return QMessageBox.Critical(self, "Erreur", "Ton compte est déjà connecté sur une autre machine !")
+                    return QMessageBox.warning(self, "Erreur", "Ton compte est déjà connecté sur une autre machine !")
                 elif is_banned:
-                    return QMessageBox.Critical(self, "Erreur", "Ton ip ou ton username est banni !")
+                    return QMessageBox.warning(self, "Erreur", "Ton ip ou ton username est banni !")
                 elif kick_time:
-                    return QMessageBox.Critical(self, "Erreur", f"Ton ip ou ton username est kick jusqu'au {kick_time} !")
+                    return QMessageBox.warning(self, "Erreur", f"Ton ip ou ton username est kick jusqu'au {kick_time} !")
                 elif not is_logged and need_register:
                     return QMessageBox.warning(self, "User Inexistant",f"Tu as besoin de te register, aucun compte existe au nom d'{username}")
                 elif not is_logged and not need_register:
@@ -344,8 +355,8 @@ class MainWindow(QMainWindow):
                 "erreur avec le serv"
         else:
             "il veut se register"
-            __reply = self.s.recv(1024).decode()
-            #            __reply = True
+            #__reply = self.s.recv(1024).decode()
+            __reply = True
             if __reply:
                 self.s.send(str.encode(json.dumps({'register': True, "user": username, "password": password})))
                 __reply = self.s.recv(1024).decode()
@@ -377,8 +388,21 @@ class MainWindow(QMainWindow):
 
 
     def handle_btn_msg(self, item):
-        if self.last_item_clicked != item.text().split("[")[0]:
-            if not self.channels.get('item.text().split("[")[0]', False):
+        # if self.new_status:
+        #     for channel, status in self.new_status.items():
+        #         info_box = QMessageBox()
+        #         info_box.setIcon(QMessageBox.Information)
+        #         info_box.setText(f"Votre demande pour le channel {channel} a été {status}")
+        #         info_box.setWindowTitle(f"Demande Channel {channel}",)
+        #         info_box.setStandardButtons(QMessageBox.Ok)
+        #         result = info_box.exec_()
+        #         if result == QMessageBox.Ok:
+        #             pass
+        #         del self.new_status[channel]
+        #           bloque le code et fait crash le client
+
+        if self.last_item_clicked != item.text().split("[")[0] and not self.is_mp_btn_clicked:
+            if not self.channels.get(item.text().split("[")[0], False):
                 #l'user n'a pas fait sa demande
                 self.last_item_clicked = None
                 message_box = QMessageBox()
@@ -389,16 +413,17 @@ class MainWindow(QMainWindow):
                 message_box.exec_()
                 if message_box.clickedButton() == dmd_btn:
                     self.channels[item.text().split("[")[0]] = "pending"
+                    print(self.channels)
                     self.s.send(str.encode(json.dumps({'join': True, "user": self.username, "channel": item.text().split("[")[0]})))
                     return
                 elif message_box.clickedButton() == cancel_btn:
                     return
 
-            elif self.channels.get('item.text().split("[")[0]', False) == "pending":
+            elif self.channels.get(item.text().split("[")[0], False) == "pending":
                 self.last_item_clicked = None
                 return QMessageBox.information(self, f"Demande channel {item.text().split('[')[0]}", f"Votre demande pour le channel {item.text().split('[')[0]} est en attente, il faut que le serveur accepte votre demande !")
 
-            elif self.channels.get('item.text().split("[")[0]', False) == "refuse":
+            elif self.channels.get(item.text().split("[")[0], False) == "refuse":
                 self.last_item_clicked = None
                 return QMessageBox.Warning(self, f"Demande channel {item.text().split('[')[0]}", f"Votre demande pour le channel {item.text().split('[')[0]} à été refusé, vous ne pourrez pas avoir accès à ce channel")
 
@@ -463,9 +488,9 @@ class MainWindow(QMainWindow):
             reply = json.loads(__reply)
             is_logged, is_banned, kick_time, need_register, already_logged = self.handle_reply(reply)
             if is_banned:
-                return QMessageBox.Critical(self, "Erreur", "Ton ip ou ton username est banni !")
+                return QMessageBox.warning(self, "Erreur", "Ton ip ou ton username est banni !")
             elif kick_time:
-                return QMessageBox.Critical(self, "Erreur", f"Ton ip ou ton username est kick jusqu'au {kick_time} !")
+                return QMessageBox.warning(self, "Erreur", f"Ton ip ou ton username est kick jusqu'au {kick_time} !")
             else:
                 pass
 
@@ -484,7 +509,7 @@ class MainWindow(QMainWindow):
         sys.exit()
 
     def set_status(self, status="connected"):
-        self.s.send(str.encode(json.dumps({'status': status, "user": self.username})))
+        self.s.send(str.encode(json.dumps({'set_status': status, "user": self.username})))
 
     def get_status(self):
         while self.is_running:
@@ -497,6 +522,6 @@ class MainWindow(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    window = MainWindow(ip="1",port=9999)
+    window = MainWindow(ip="192.168.1.19",port=6530)
     #window.show()
     app.exec()

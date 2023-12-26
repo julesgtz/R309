@@ -57,7 +57,7 @@ if __name__ == "__main__":
                         help='Le port du server')
     parser.add_argument('-u', required=True, type=int,
                         help="Le nombre max d'users")
-    parser.add_argument('-b', required=True, type=int,
+    parser.add_argument('-b', required=True, type=str,
                         help="L'ip de la base de donnée")
 
     args = vars(parser.parse_args())

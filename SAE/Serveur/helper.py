@@ -182,7 +182,7 @@ def set_new_channel_rq(connexion, username, channel_name, status="pending"):
     cursor = connexion.cursor()
 
     try:
-        rq = "INSERT INTO ChannelRequests (channelID, userID) VALUES (%s, %s, %s)"
+        rq = "INSERT INTO ChannelRequests (channelID, userID, status) VALUES (%s, %s, %s)"
         cursor.execute(rq, (channel_id, user_id, status))
 
         connexion.commit()
@@ -443,7 +443,7 @@ def get_channel_acceptation(channel_name, connexion):
         cursor.execute(rq, (channel_name,))
         result = cursor.fetchone()
         if result:
-            return result[0]
+            return result[0] if result[0] != 'None' else None
         else:
             return None
 
@@ -593,3 +593,11 @@ def get_user_id(user, connexion):
 
     finally:
         cursor.close()
+
+if __name__ == "__main__":
+    co = check_bdd("192.168.1.19")
+    print(check_user_exist("toto", co))
+    # print(register_user("toto2", "toto", "192.168.1.19", co))
+    x = get_channel_acceptation(channel_name="Blabla", connexion=co)
+    if x:
+        print(x)
