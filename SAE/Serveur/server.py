@@ -1,11 +1,12 @@
 import socket
-from threading import Thread, current_thread
+from threading import Thread, current_thread, Event
 from time import sleep
 from helper import *
 import json
 import ipaddress
 import os
 import re
+import sys
 # des qu'on accepte une demande de join de channels, envoyer un msg au client
 # des qu'un user se log, il veut savoir sur quels channels il a acces
 
@@ -31,6 +32,7 @@ class Server:
         self.running = True
         self.threads = []
         self.connexion = None
+        self.exit_flag = Event()
 
         self.ip_bdd = ip_bdd
 
@@ -45,7 +47,7 @@ class Server:
 
         username, password_to_find = get_user_pwd("admin", connexion=self.connexion)
 
-        while not logged and self.running:
+        while not logged and self.running and not self.exit_flag.is_set():
             print("Vous devez vous log pour pouvoir Accepter / refuser des demandes pour rejoindre des channels")
             print("Username : admin")
             password = str(input("Password : "))
@@ -63,7 +65,7 @@ class Server:
 
 
 
-        while self.running:
+        while self.running and not self.exit_flag.is_set():
             need_refresh = False
 
             need_accept = get_channel_rq(connexion=self.connexion)
@@ -80,7 +82,7 @@ class Server:
                 print("\n")
                 reponse_id = None
 
-                while not reponse_id:
+                while not reponse_id and not self.exit_flag.is_set():
                     reponse_id = input("Entrez le numéro de requête que vous voulez gérer (R / r pour refresh) : ")
                     try:
                         reponse_id = int(reponse_id)
@@ -106,7 +108,7 @@ class Server:
                     print(f"Demande de {user_name} pour rejoindre le channel {channel_name}")
 
                     reponse = None
-                    while not reponse:
+                    while not reponse and not self.exit_flag.is_set():
                         try:
                             reponse = str(input("Voulez vous accepter / refuser la requête (exit/quit pour quitter, a/accepter pour accepter, r/refuser pour refuser) : "))
                             if reponse.lower() == 'exit' or 'quit':
@@ -158,7 +160,7 @@ class Server:
         :return: :bool: si la connexion est réussie
         """
         logged = False
-        while not logged:
+        while not logged and not self.exit_flag.is_set():
             "tant qu'il n'est pas log, attend ses logins"
             __reply = client.recv(1024).decode()
             reply = json.loads(__reply)
@@ -226,8 +228,8 @@ class Server:
         rq_thread = Thread(target=self.__channel_rq, args=())
         self.threads.append(rq_thread)
 
-        while self.running:
-            while self.m > self.c_user:
+        while self.running and not self.exit_flag.is_set():
+            while self.m > self.c_user and not self.exit_flag.is_set():
                 print("Attente d'un client")
                 self.s.listen(self.m)
                 client, address = self.s.accept()
@@ -378,6 +380,10 @@ class Server:
                 for con in self.conn_client:
                     con.send(str.encode(json.dumps({'kill': True})))
                     #les clients doivent ensuite envoyer is_close pour close leur connexion
+                sleep(5)
+                self.running = False
+                self.exit_flag.set()
+                sys.exit(0)
             return None
 
 
@@ -406,7 +412,7 @@ class Server:
 
     def __client_hdl(self, new_client, ip):
         closed = False
-        while not closed:
+        while not closed and not self.exit_flag.is_set():
             #new_client.send(str.encode("True"))
             is_logged = self.__credential_checker(client=new_client, ip=ip)
             "Il faut check si l'utilisateur ne ferme pas le client durant la connexion !!"
@@ -414,7 +420,7 @@ class Server:
                 "Il s'est connecté , on ajoute sa connexion"
                 self.conn_client.append(new_client)
 
-                while is_logged:
+                while is_logged and not self.exit_flag.is_set():
                     __reply = new_client.recv(1024).decode()
                     reply = json.loads(__reply)
 
@@ -452,7 +458,7 @@ class Server:
         if not self.connexion:
             self.running = False
 
-        while self.running:
+        while self.running and not self.exit_flag.is_set():
             self.__accept_clients()
         else:
             print("ERROR")
