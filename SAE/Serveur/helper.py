@@ -77,7 +77,7 @@ def check_ip_exist(ip, connexion):
     try:
         rq = "SELECT * FROM Users WHERE ip = %s"
         cursor.execute(rq, (ip,))
-        result = cursor.fetchone()
+        result = cursor.fetchall()
         if result:
             return True
         else:
@@ -107,11 +107,15 @@ def check_ban(user, ip, connexion):
         if result_user:
             return True
 
-        rq = "SELECT * FROM Users WHERE ip = %s AND status = 'ban'"
-        cursor.execute(rq, (ip,))
-        result_ip = cursor.fetchone()
+        ip_exist = check_ip_exist(ip, connexion)
+        if not ip_exist:
+            return False
 
-        if result_ip:
+        rq = "SELECT * FROM Users WHERE ip = %s AND status != 'ban'"
+        cursor.execute(rq, (ip,))
+        result_ip = cursor.fetchall()
+
+        if not result_ip:
             return True
 
         return False
@@ -141,16 +145,24 @@ def check_kick(user, ip, connexion):
         result_user = cursor.fetchone()
 
         if result_user:
-            return True, result_user[0]
+            return True, result_user[0].strftime('%Y-%m-%d %H:%M:%S')
 
-        rq = "SELECT timestamp FROM Users WHERE ip = %s AND status = 'kick'"
+        ip_exist = check_ip_exist(ip, connexion)
+        if not ip_exist:
+            return False, None
+
+        rq = "SELECT * FROM Users WHERE ip = %s AND status != 'kick'"
         cursor.execute(rq, (ip,))
-        result_ip = cursor.fetchone()
-
-        if result_ip:
-            return True, result_ip[0]
+        result_ip = cursor.fetchall()
+        if not result_ip:
+            rq = "SELECT timestamp FROM Users WHERE ip = %s AND status = 'kick'"
+            cursor.execute(rq, (ip,))
+            result_ip = cursor.fetchall()
+            print(result_ip)
+            return True, result_ip[0][0].strftime('%Y-%m-%d %H:%M:%S')
 
         return False, None
+
 
     except mysql.connector.Error as err:
         print(f"Erreur lors de la vérification du kick : {err}")
@@ -596,8 +608,21 @@ def get_user_id(user, connexion):
 
 if __name__ == "__main__":
     co = check_bdd("192.168.1.19")
-    print(check_user_exist("toto", co))
+    # print(check_user_exist("toto", co))
     # print(register_user("toto2", "toto", "192.168.1.19", co))
-    x = get_channel_acceptation(channel_name="Blabla", connexion=co)
-    if x:
-        print(x)
+    # x = get_channel_acceptation(channel_name="Blabla", connexion=co)
+    # if x:
+    #     print(x)
+    # print(check_ban(user="toto2", ip="192.168.1.1",connexion=co))
+    # print(ban_user(user="toto2", connexion=co))
+    # print(ban_user(ip="192.168.1.19", connexion=co))
+    # print(check_ban(user="toto10", ip="192.168.1.19",connexion=co))
+    # print(get_user_id("toto10", connexion=co))
+    # print(get_joined_channel_rq(connexion=co, username="toto"))
+    # print(get_channel_rq(connexion=co))
+    print(check_ban("toto", "192.168.1.19",connexion=co))
+    # print(check_kick(user="toto", ip="192.168.1.19",connexion=co))
+    # print(kick_user(ip="192.168.1.19", connexion=co, duree=24))
+    # print(check_kick(user="toto", ip="192.168.1.19", connexion=co))
+    # print(ban_user(ip="10.0.0.1", connexion=co))
+    print(check_kick("toto","192.168.1.19",connexion=co))
