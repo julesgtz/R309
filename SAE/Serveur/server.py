@@ -83,7 +83,7 @@ class Server:
                 reponse_id = None
 
                 while not reponse_id and not self.exit_flag.is_set():
-                    reponse_id = input("Entrez le numéro de requête que vous voulez gérer (R / r pour refresh) : ")
+                    reponse_id = input("Entrez le numéro de requête que vous voulez gérer (R / r pour refresh // C / c pour faire des commandes) : ")
                     try:
                         reponse_id = int(reponse_id)
                         if not 0< reponse_id < c_rq:
@@ -92,12 +92,71 @@ class Server:
 
                     except:
                         try:
-                            reponse_id = str(reponse_id)
-                            if not reponse_id.lower() == "r":
-                                print(f"Tapez r / R pour refresh, {reponse_id} n'existe pas")
+                            reponse_id = str(reponse_id).lower()
+                            if not reponse_id == "r" or not reponse_id == "c":
+                                print(f"Tapez (R / r pour refresh // C / c pour faire des commandes), {reponse_id} n'existe pas")
                                 reponse_id = None
                             else:
-                                need_refresh = True
+                                if reponse_id == "c":
+                                    exit = False
+                                    while not exit and not self.exit_flag.is_set():
+                                        command = input("""
+                                        Commandes de la forme : 'commande (kick/ban)' 'user/ip' 'kick_time (en heures)'
+                                        \n
+                                        Exemples de commandes : 
+                                        \n kick jules 24 (pour kick jules pendant 24heures)
+                                        \n ban jules (pour bannir jules)
+                                        \n ban 192.168.1.1 (pour bannir l'ip 192.168.1.1)
+                                        \n kick 192.168.1.1 12 (pour kick l''ip 192.168.1.1 pendant 12 heures)
+                                        \n
+                                        \nEntrez la commande que vous voulez (Q / q pour quitter): """).split(" ")
+                                        try:
+                                            if len(command) == 1 and str(command[0]).lower() == "q":
+                                                exit = True
+                                            elif len(command) == 2:
+                                                if str(command[0]).lower() == "ban":
+                                                    user = str(command[1]).lower()
+                                                    try:
+                                                        ipaddress.ip_address(user)
+                                                        good = ban_user(ip=user, connexion=self.connexion)
+                                                        if good:
+                                                            print(f"L'ip {user} a bien été banni")
+                                                        else:
+                                                            print(f"L'ip {user} n'existe pas")
+
+                                                    except:
+                                                        good = ban_user(ip=user, connexion=self.connexion)
+                                                        if good:
+                                                            print(f"L'{user} a bien été banni")
+                                                        else:
+                                                            print(f"L'{user} n'existe pas")
+
+
+                                            elif len(command) == 3:
+                                                user = str(command[1]).lower()
+                                                try:
+                                                    ipaddress.ip_address(user)
+                                                    good, date = kick_user(ip=user,
+                                                                           duree=int(command[2]),
+                                                                           connexion=self.connexion)
+                                                    if good:
+                                                        print(f"L'ip {user} kick jusqu'au {date}")
+                                                    else:
+                                                        print(f"L'ip {user} n'existe pas")
+                                                except:
+                                                    good, date = kick_user(ip=user,
+                                                                           duree=int(command[2]),
+                                                                           connexion=self.connexion)
+                                                    if good:
+                                                        print(f"L'{user} kick jusqu'au {date}")
+                                                    else:
+                                                        print(f"L'{user} n'existe pas")
+                                            else:
+                                                pass
+                                        except:
+                                            pass
+                                else:
+                                    need_refresh = True
                         except:
                             reponse_id = None
 
@@ -163,12 +222,15 @@ class Server:
         while not logged and not self.exit_flag.is_set():
             "tant qu'il n'est pas log, attend ses logins"
             __reply = client.recv(1024).decode()
+            print(__reply)
+
             reply = json.loads(__reply)
 
             print(reply)
 
             login = reply.get("login", None)
             register = reply.get("register", None)
+            close = reply.get("close", None)
             if login:
                 user_exist = check_user_exist(user=reply.get("user"), connexion=self.connexion)
                 if user_exist:
@@ -179,13 +241,15 @@ class Server:
                         return logged
 
                     is_kick, duree = check_kick(user=reply.get("user"), ip=ip, connexion=self.connexion)
+                    print(duree)
                     if is_kick:
                         "renvoie false si kick"
                         client.send(str.encode(json.dumps({'login_msg': True, 'login': False, 'kick': duree})))
                         return logged
-
+                    print(self.user_conn)
                     if reply.get("user") in self.user_conn:
                         client.send(str.encode(json.dumps({'login_msg': True, 'login': False, 'already_logged': True})))
+                        return None
 
                         
                     username, password = get_user_pwd(reply.get("user"), connexion=self.connexion)
@@ -207,17 +271,32 @@ class Server:
                 "Pour le register check si la personne a bien mis aucun espace etc ect (surement le faire depuis le client , a voir)"
                 "L'user veut se register, le serveur attend sa nouvelle requete avec l'username et password"
 
+
                 user_exist = check_user_exist(user=reply.get("user"), connexion=self.connexion)
                 print(user_exist)
                 if user_exist:
                     "L'utilisateur existe deja, il doit se connecter alors ou se register avec un autre username, le client va lui afficher un message d'erreur, il devra recliquer sur register"
                     client.send(str.encode(json.dumps({'register_msg': True,'register': False})))
                 else:
+                    is_ban = check_ban(user=reply.get("user"), ip=ip, connexion=self.connexion)
+                    if is_ban:
+                        "renvoie false si ban"
+                        client.send(str.encode(json.dumps({'register_msg': True, 'ban': True,'register': False})))
+                        return logged
+                    is_kick, duree = check_kick(user=reply.get("user"), ip=ip, connexion=self.connexion)
+                    if is_kick:
+                        "renvoie false si kick"
+                        client.send(str.encode(json.dumps({'register_msg': True, 'login': False, 'kick': duree})))
+                        return logged
+
                     "l'user existe pas, le serveur l'enregiste, renvoie dans la boucle, l'user doit se connecter"
                     print(reply.get("user"), reply.get("password"), ip)
                     register_user(user=reply.get("user"), password=reply.get("password"), ip=ip,
                                   connexion=self.connexion)
                     client.send(str.encode(json.dumps({'register_msg': True,'register': True})))
+            elif close:
+                "ferme la connexion, le thread ..."
+                return logged
         else:
             "si il est log, sort de la boucle et renvoie True pour hdl les messages"
             return logged
@@ -227,6 +306,7 @@ class Server:
         Permet d'accepter les clients jusqu'au nombre max d'users
         """
         rq_thread = Thread(target=self.__channel_rq, args=())
+        # rq_thread.start()
         self.threads.append(rq_thread)
 
         while self.running and not self.exit_flag.is_set():
@@ -286,6 +366,7 @@ class Server:
             return "relogin"
 
         elif is_close:
+            if message.get("user", False): self.user_status[message.get("user")] = "deconnected"
             "ferme la connexion, le thread ..."
             return "stop_connexion"
 
@@ -325,11 +406,11 @@ class Server:
             return None
 
         elif is_private:
-            save_private_message(message=is_channel_msg, other_user=message.get("other_user"),
+            save_private_message(message=is_private, other_user=message.get("other_user"),
                                  username=message.get("user"), connexion=self.connexion)
             conn = self.user_conn.get(message.get("other_user"))
             conn.send(str.encode(json.dumps(
-                {"private_message": is_channel_msg, "user": message.get("user")})))
+                {"private_message": is_private, "user": message.get("user")})))
             return None
 
 
@@ -419,20 +500,27 @@ class Server:
             #new_client.send(str.encode("True"))
             is_logged = self.__credential_checker(client=new_client, ip=ip)
             "Il faut check si l'utilisateur ne ferme pas le client durant la connexion !!"
-            if is_logged:
+            if is_logged is None:
+                pass
+            elif is_logged:
                 "Il s'est connecté , on ajoute sa connexion"
                 self.conn_client.append(new_client)
 
                 while is_logged and not self.exit_flag.is_set():
-                    __reply = new_client.recv(1024).decode()
-                    reply = json.loads(__reply)
+                    try:
+                        __reply = new_client.recv(1024).decode()
+                        print(__reply)
+                        reply = json.loads(__reply)
 
-                    status = self.__message_handler(message=reply, client=new_client, ip=ip)
-                    if status == "stop_connexion":
+                        status = self.__message_handler(message=reply, client=new_client, ip=ip)
+                        if status == "stop_connexion":
+                            is_logged = False
+                            closed = True
+                        if status == "relogin":
+                            is_logged = False
+                    except ConnectionResetError:
                         is_logged = False
                         closed = True
-                    if status == "relogin":
-                        is_logged = False
 
                 else:
                     "il a cliquer sur le bouton deconnecté, on va attendre qu'il se register / se reconnecter"
@@ -445,10 +533,13 @@ class Server:
         else:
             "l'user a fermer son client, on supprime donc sa connexion, son thread et on enleve un user"
             new_client.close()
-            self.user_conn = {key: val for key, val in self.user_conn.items() if val != new_client}
-            self.conn_client.remove(new_client)
-            self.c_user -= 1
-            self.threads.remove(current_thread())
+            try:
+                self.user_conn = {key: val for key, val in self.user_conn.items() if val != new_client}
+                self.conn_client.remove(new_client)
+                self.c_user -= 1
+                self.threads.remove(current_thread())
+            except ValueError:
+                pass
 
     def start(self):
         """
