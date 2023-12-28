@@ -16,12 +16,14 @@ class MainWindow(QMainWindow):
         self.is_running = True
         self.is_mp_btn_clicked = False
         self.is_login_page = True
+        self.logged = False
+        self.refresh = False
         self.ip = ip
         self.port = port
         self.thread = []
         self.user_status = {}
         self.username = ""
-        self.cache = {"Général": ["moi -> test", "charles -> awee"], "Blabla": ["salut"], "Comptabilité": [], "Informatique": [], "Marketing": []}
+        self.cache = {"Général": [], "Blabla": [], "Comptabilité": [], "Informatique": [], "Marketing": []}
         #ajoute au buffer des qu'un msg est recu (pour les channels, check si l'user a bien acces aux channels)
         self.last_item_clicked = None
         self.channels_join = {} # nom du channel : status ( accepted / pending / refused )
@@ -201,8 +203,11 @@ class MainWindow(QMainWindow):
         self.list_message_box.itemClicked.connect(self.handle_btn_msg)
         self.btn_submit_login.clicked.connect(self.handle_login)
         self.btn_switch_to_register.clicked.connect(self.switch_register_login)
+        self.send_message_box.returnPressed.connect(self.handle_send_msg)
+
 
     def closeEvent(self, event):
+        print("closing")
         self.close_app()
         event.accept()
 
@@ -220,7 +225,7 @@ class MainWindow(QMainWindow):
         print(reply) #debug
 
         if is_register:
-            return reply.get("register") #True / False si bien registered ou pas
+            return reply.get("register"), reply.get("ban", False), reply.get("kick", False) #True / False si bien registered ou pas
 
         elif is_login:
             is_logged = reply.get("login", False)
@@ -236,8 +241,9 @@ class MainWindow(QMainWindow):
             sender = reply.get("user", None)
             channel_name = reply.get("channel", None)
             self.cache[channel_name].append(f"{sender}> {message}")
-
+            print(f"last item {self.last_item_clicked}, channel_name {channel_name}")
             if self.last_item_clicked == channel_name:
+                print("append")
                 self.show_message_box.appendPlainText(f"{sender}> {message}")
 
 
@@ -265,12 +271,31 @@ class MainWindow(QMainWindow):
                 self.close_app()
 
         elif is_get_status:
-            print(reply)
             del is_get_status[self.username]
-            self.user_status = is_get_status
-            if self.user_status.get(self.last_item_clicked, False) or self.is_mp_btn_clicked:
-                #l'user est dans la section private msg donc il faut update les boutons
+            print(self.last_item_clicked)
+            if self.refresh and self.is_mp_btn_clicked:
                 self.setup_private_msg()
+                self.user_status = is_get_status
+                self.refresh = False
+
+            elif not self.is_mp_btn_clicked and is_get_status != self.user_status:
+                self.user_status = is_get_status
+                self.refresh = True
+
+            elif self.is_mp_btn_clicked and is_get_status != self.user_status:
+                self.user_status = is_get_status
+                self.setup_private_msg()
+
+
+            for user in self.user_status:
+                if not self.cache.get("user", None):
+                    self.cache[user] = []
+
+            # del is_get_status[self.username]
+            # self.user_status = is_get_status
+            # if self.user_status.get(self.last_item_clicked, False) or self.is_mp_btn_clicked:
+            #     #l'user est dans la section private msg donc il faut update les boutons
+            #     self.setup_private_msg()
 
 
         elif is_get_joined:
@@ -283,9 +308,36 @@ class MainWindow(QMainWindow):
             status = "accepté" if reply.get("status") == "accept" else "refusé"
             self.new_status[channel_name] = status
             self.channels[channel_name] = reply.get("status")
+            Thread(target=self.new_channel_msg, args=(channel_name, status)).start()
             # QMessageBox.information(self, f"Demande Channel {channel_name}",f"Votre demande pour le channel {channel_name} a été {status}")
 
         return False, False, False, False, False
+
+
+    def handle_send_msg(self):
+        msg = self.send_message_box.text()
+        self.send_message_box.clear()
+        print(self.last_item_clicked, self.is_mp_btn_clicked, self.cache)
+        if self.last_item_clicked:
+            if self.is_mp_btn_clicked:
+                self.cache[self.last_item_clicked].append(f"moi> {msg}")
+                self.show_message_box.appendPlainText(f"moi> {msg}")
+                if self.user_status.get(self.last_item_clicked) != "deconnected":
+                    self.s.send(str.encode(
+                        json.dumps({'private_message': msg, "user": self.username, "other_user": self.last_item_clicked})))
+
+            else:
+                self.s.send(str.encode(json.dumps({'channel_message': msg, "user": self.username, "channel": self.last_item_clicked})))
+                self.cache[self.last_item_clicked].append(f"moi> {msg}")
+                self.show_message_box.appendPlainText(f"moi> {msg}")
+
+
+
+
+    def new_channel_msg(self, channel_name, status):
+        QMessageBox.information(self, f"Demande Channel {channel_name}",
+                                f"Votre demande pour le channel {channel_name} a été {status}")
+
 
 
 
@@ -336,14 +388,19 @@ class MainWindow(QMainWindow):
                     self.s.send(str.encode(json.dumps({'get_joined': True, "user": username})))
                     self.stackedWidget.setCurrentIndex(1)
                     self.setWindowTitle(f"Chat APP | Connecté en tant que : {username}")
+                    self.logged = True
                     self.username = username
                     self.set_status()
                 elif already_logged:
                     return QMessageBox.warning(self, "Erreur", "Ton compte est déjà connecté sur une autre machine !")
                 elif is_banned:
-                    return QMessageBox.warning(self, "Erreur", "Ton ip ou ton username est banni !")
+                    QMessageBox.warning(self, "Erreur", "Ton ip ou ton username est banni !")
+                    self.close_app()
+                    return
                 elif kick_time:
-                    return QMessageBox.warning(self, "Erreur", f"Ton ip ou ton username est kick jusqu'au {kick_time} !")
+                    QMessageBox.warning(self, "Erreur", f"Ton ip ou ton username est kick jusqu'au {kick_time}!")
+                    self.close_app()
+                    return
                 elif not is_logged and need_register:
                     return QMessageBox.warning(self, "User Inexistant",f"Tu as besoin de te register, aucun compte existe au nom d'{username}")
                 elif not is_logged and not need_register:
@@ -361,11 +418,20 @@ class MainWindow(QMainWindow):
                 self.s.send(str.encode(json.dumps({'register': True, "user": username, "password": password})))
                 __reply = self.s.recv(1024).decode()
                 reply = json.loads(__reply)
-                is_registered = self.handle_reply(reply)
-                if is_registered:
+                is_registered, is_ban, kick_time = self.handle_reply(reply)
+                print(is_registered, is_ban, kick_time)
+                if is_registered and not is_ban and not kick_time:
                     return QMessageBox.information(self, "Register", "Vous avez bien été enregistré")
-                else:
+                elif not is_registered and not is_ban and not kick_time:
                     return QMessageBox.warning(self, "User Existant",f"L'username : {username} existe déjà")
+                elif not is_registered and not is_ban and kick_time:
+                    QMessageBox.warning(self, "Erreur", f"Ton ip ou ton username est kick jusqu'au {kick_time}!")
+                    self.close_app()
+                    return
+                else:
+                    QMessageBox.warning(self, "Erreur", "Ton ip ou ton username est banni !")
+                    self.close_app()
+                    return
 
 
 
@@ -430,6 +496,10 @@ class MainWindow(QMainWindow):
             else:
                 self.show_message_box.setPlainText("\n".join(self.cache[item.text().split("[")[0]]))
                 self.last_item_clicked = item.text().split("[")[0]
+                print("else", item.text().split("[")[0], self.last_item_clicked)
+        elif self.last_item_clicked != item.text().split("[")[0] and self.is_mp_btn_clicked:
+            self.last_item_clicked = item.text().split("[")[0]
+
 
 
     def btn_channel_clicked(self):
@@ -484,14 +554,22 @@ class MainWindow(QMainWindow):
 
     def receive_msg(self):
         while self.is_running:
-            __reply = self.s.recv(1024).decode()
-            reply = json.loads(__reply)
-            is_logged, is_banned, kick_time, need_register, already_logged = self.handle_reply(reply)
-            if is_banned:
-                return QMessageBox.warning(self, "Erreur", "Ton ip ou ton username est banni !")
-            elif kick_time:
-                return QMessageBox.warning(self, "Erreur", f"Ton ip ou ton username est kick jusqu'au {kick_time} !")
-            else:
+            try:
+                __reply = self.s.recv(1024).decode()
+                reply = json.loads(__reply)
+                print(reply)
+                is_logged, is_banned, kick_time, need_register, already_logged = self.handle_reply(reply)
+                if is_banned:
+                    QMessageBox.warning(self, "Erreur", "Ton ip ou ton username est banni !")
+                    self.close_app()
+                    return
+                elif kick_time:
+                    QMessageBox.warning(self, "Erreur", f"Ton ip ou ton username est kick jusqu'au {kick_time}!")
+                    self.close_app()
+                    return
+                else:
+                    pass
+            except (ConnectionAbortedError, TypeError):
                 pass
 
 
@@ -500,8 +578,10 @@ class MainWindow(QMainWindow):
     def close_app(self):
         self.is_running = False
         try:
-            self.set_status(status="deconnected")
-            self.s.send(str.encode(json.dumps({'close': True})))
+            # if self.logged:
+            #     self.set_status(status="deconnected")
+            if self.username: self.s.send(str.encode(json.dumps({'close': True, "user": self.username})))
+            else: self.s.send(str.encode(json.dumps({'close': True})))
             self.s.close()
         except:
             pass
