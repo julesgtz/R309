@@ -4,7 +4,7 @@ Bienvenue dans le dossier BDD du projet SAE3.02. Cette section fournit des instr
 
 ## Schéma Relationnel
 
-Le fichier `schema bdd.PNG` [(Acces Rapide)](schema bdd.PNG) dans ce dossier représente le schéma relationnel de la base de données. Vous pouvez le consulter pour comprendre la structure des tables et les relations entre elles.
+Le fichier `schema bdd.PNG` dans ce dossier représente le schéma relationnel de la base de données. Vous pouvez le consulter pour comprendre la structure des tables et les relations entre elles.
 
 ## 1/ Configuration du Serveur MySQL
 
@@ -19,7 +19,7 @@ Le fichier `schema bdd.PNG` [(Acces Rapide)](schema bdd.PNG) dans ce dossier rep
 
 ### Option 1 : Utiliser le Script 'script mysql.txt'
 
-   - Copiez le contenu du fichier `script mysql.txt` [(Acces Rapide)](script mysql.txt).
+   - Copiez le contenu du fichier `script mysql.txt`.
    - Ouvrez un terminal MySQL.
    - Collez le contenu et exécutez-le pour créer la base de données.
 
