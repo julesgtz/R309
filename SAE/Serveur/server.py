@@ -6,7 +6,6 @@ import json
 import ipaddress
 import os
 import re
-import sys
 
 
 # des qu'on accepte une demande de join de channels, envoyer un msg au client
@@ -16,14 +15,15 @@ import sys
 class Server:
     def __init__(self, max_user: int, ip: str, port: int, ip_bdd: str):
         """
-        Initialisation de la classe server
+        Initialisation de la classe server.
 
-        :param max_user: Le nombre max d'users sur le serveur
-        :param ip: l'ip du serveur
-        :param port: le port du serveur
-        :param ip_bdd: l'ip de la base de données
+        :param max_user: Le nombre max d'utilisateurs sur le serveur.
+        :param ip: L'adresse IP du serveur.
+        :param port: Le port du serveur.
+        :param ip_bdd: L'adresse IP de la base de données.
         """
         self.__user_conn = {}
+        self.__rq_n = {}
         self.__conn_client = []
         self.__user_status = {}
         # user : status (idle / connected)
@@ -40,14 +40,15 @@ class Server:
 
     def __channel_rq(self):
         """
-        Permet au server d'accepter / refuser les requêtes pour rejoindre un channel et effectuer des commandes
+        Permet au serveur d'accepter/refuser les requêtes pour rejoindre un channel et effectuer des commandes.
         """
+
         # doit faire en sorte que de se log sur admin, ne pas proposé un username mais seulement un mdp
         logged = False
 
         username, password_to_find = get_user_pwd("admin", connexion=self.__connexion) #Récupere le password d'admin
 
-        while not logged and self.running and not self.__exit_flag.is_set(): #Tant qu'il est pas log en tant qu'admin, il rééssaye des mdps
+        while not logged and self.running and not self.__exit_flag.is_set() and self.running: #Tant qu'il est pas log en tant qu'admin, il rééssaye des mdps
             print("Vous devez vous log pour pouvoir Accepter / refuser des demandes pour rejoindre des channels")
             print("Username : admin")
             password = str(input("Password : "))
@@ -63,7 +64,7 @@ class Server:
             else:
                 print("Le mot de passe ne correspond pas aux critères, réessayez \n")
 
-        while self.running and not self.__exit_flag.is_set(): #Tant que le serveur run, il peut effectuer des commandes ou accepter / refuser des demandes pour rejoindre des channels
+        while self.running and not self.__exit_flag.is_set() and self.running: #Tant que le serveur run, il peut effectuer des commandes ou accepter / refuser des demandes pour rejoindre des channels
             need_refresh = False
 
             need_accept = get_channel_rq(connexion=self.__connexion)
@@ -71,11 +72,26 @@ class Server:
             os.system('cls' if os.name == 'nt' else 'clear') #clear la console
             print("Voici les demandes :")
             c_rq = 0
+            wdcommand = False
+            if not need_accept:
+                print("Pas de nouvelles demandes :(")
+                wcommand = input("Voulez vous effectuer une commande ? (y/n)")
+                try:
+                    wcommand = str(wcommand)
+                    if wcommand.lower() == "y":
+                        wdcommand = True
+                    else:
+                        pass
+                except:
+                    pass
 
-            if need_accept:
+
+            if need_accept or wdcommand:
+                self.__rq_n = {}
                 for rq in need_accept:
                     c_rq += 1
                     request_id, channel_name, user_name = rq
+                    self.__rq_n[c_rq] = request_id
                     print(f"{c_rq} : Demande de {user_name} pour rejoindre le channel {channel_name}")
                 print("\n")
                 reponse_id = None
@@ -85,38 +101,43 @@ class Server:
                         "Entrez le numéro de requête que vous voulez gérer (R / r pour refresh // C / c pour faire des commandes) : ")
                     try:
                         reponse_id = int(reponse_id)
-                        if not 0 < reponse_id < c_rq: # Si la requete ne fait pas parti des requetes proposées
+                        if not 0 < reponse_id < c_rq + 1: # Si la requete ne fait pas parti des requetes proposées
                             print(f"La requête {reponse_id} n'existe pas")
                             reponse_id = None
 
                     except: #c'est un str, donc l'utilisateur veut faire autre chose que gerer une requete
                         try:
                             reponse_id = str(reponse_id).lower()
-                            if not reponse_id == "r" or not reponse_id == "c": #l'utilisateur a écrit n'importe quoi
+                            if not reponse_id == "r" and not reponse_id == "c": #l'utilisateur a écrit n'importe quoi
                                 print(
                                     f"Tapez (R / r pour refresh // C / c pour faire des commandes), {reponse_id} n'existe pas")
                                 reponse_id = None
                             else:
                                 if reponse_id == "c": #l'utilisateur veut faire des commandes
                                     exit = False
-                                    while not exit and not self.__exit_flag.is_set():
-                                        command = input("""
-                                        Commandes de la forme : 'commande (kick/ban)' 'user/ip' 'kick_time (en heures)'
-                                        \n
-                                        Exemples de commandes : 
-                                        \n kick jules 24 (pour kick jules pendant 24heures)
-                                        \n ban jules (pour bannir jules)
-                                        \n ban 192.168.1.1 (pour bannir l'ip 192.168.1.1)
-                                        \n kick 192.168.1.1 12 (pour kick l''ip 192.168.1.1 pendant 12 heures)
-                                        \n kill (pour kill le serveur)
-                                        \n
-                                        \nEntrez la commande que vous voulez (Q / q pour quitter): """).split(" ")
+                                    while not exit and not self.__exit_flag.is_set() and self.running:
+                                        os.system('cls' if os.name == 'nt' else 'clear')  # clear la console
+                                        print(
+                                            "\nCommandes de la forme : 'commande (kick/ban)' 'user/ip' 'kick_time (en heures)'\n"
+                                            "\n"
+                                            "Exemples de commandes : \n"
+                                            "\nkick jules 24 (pour kick jules pendant 24 heures)\n"
+                                            "ban jules (pour bannir jules)\n"
+                                            "ban 192.168.1.1 (pour bannir l'ip 192.168.1.1)\n"
+                                            "kick 192.168.1.1 12 (pour kick l'ip 192.168.1.1 pendant 12 heures)\n"
+                                            "kill (pour kill le serveur)\n"
+                                        )
+
+                                        command = input("Entrez la commande que vous voulez (Q / q pour quitter): ").split(" ")
                                         try:
                                             if len(command) == 1 and str(command[0]).lower() == "q": #l'utilisateur ne veut plus faire de commandes
                                                 exit = True
+                                                need_refresh = True
                                             elif len(command) == 1 and str(command[0]).lower() == "kill":#l'utilisateur veut kill le serveur
                                                 print("Arret du serveur")
                                                 self.__message_handler(message={"kill": True, "user":"admin"}, client=None, ip=None)
+                                                self.running = False
+                                                self.__exit_flag.set()
                                             elif len(command) == 2:
                                                 if str(command[0]).lower() == "ban": # l'utilisateur veut bannir un user / une ip
                                                     user = str(command[1]).lower()
@@ -129,11 +150,11 @@ class Server:
                                                             print(f"L'ip {user} n'existe pas")
 
                                                     except:
-                                                        good = ban_user(ip=user, connexion=self.__connexion) # ban l'username
+                                                        good = ban_user(user=user, connexion=self.__connexion) # ban l'username
                                                         if good:
-                                                            print(f"L'{user} a bien été banni")
+                                                            print(f"L'user {user} a bien été banni")
                                                         else:
-                                                            print(f"L'{user} n'existe pas")
+                                                            print(f"L'user {user} n'existe pas")
 
 
                                             elif len(command) == 3: #l'utilisateur veut kick quelqu'un
@@ -156,13 +177,13 @@ class Server:
                                                         else:
                                                             print(f"L'ip {user} n'existe pas")
                                                     except:
-                                                        good, date = kick_user(ip=user,
+                                                        good, date = kick_user(user=user,
                                                                                duree=temps,
                                                                                connexion=self.__connexion)
                                                         if good:
-                                                            print(f"L'{user} kick jusqu'au {date}")
+                                                            print(f"L'user {user} kick jusqu'au {date}")
                                                         else:
-                                                            print(f"L'{user} n'existe pas")
+                                                            print(f"L'user {user} n'existe pas")
                                             else:
                                                 pass
                                         except:
@@ -172,36 +193,36 @@ class Server:
                         except: # refresh la demande
                             reponse_id = None
 
-                if not need_refresh: # l'utilisateur a selectionné une requete, il faut donc savoir si il veut l'accepter ou la refuser
+                if not need_refresh and self.running and not self.__exit_flag.is_set(): # l'utilisateur a selectionné une requete, il faut donc savoir si il veut l'accepter ou la refuser
                     os.system('cls' if os.name == 'nt' else 'clear')
                     print(f"Vous avez séléctionné la requête numéro {reponse_id}")
-                    request_id, channel_name, user_name = need_accept[reponse_id]
+                    request_id, channel_name, user_name = need_accept[reponse_id-1]
                     print(f"Demande de {user_name} pour rejoindre le channel {channel_name}")
 
                     reponse = None
                     while not reponse and not self.__exit_flag.is_set():
                         try:
-                            reponse = str(input(
-                                "Voulez vous accepter / refuser la requête (exit/quit pour quitter, a/accepter pour accepter, r/refuser pour refuser) : "))
-                            if reponse.lower() == 'exit' or 'quit':
+                            reponse = str(input("Voulez vous accepter / refuser la requête (exit/quit pour quitter, a/accepter pour accepter, r/refuser pour refuser) : "))
+                            if reponse.lower() == ('exit' or 'quit'):
                                 reponse = True
-                            elif reponse.lower() == 'a' or 'accepter':
+                            elif reponse.lower() == ('a' or 'accepter'):
                                 set_status_channel_rq(connexion=self.__connexion, accept=True, request_id=request_id)
-                                self.__user_conn[user_name].send(str.encode(
-                                    json.dumps({'join': True, "channel_name": channel_name, "status": "accept"})))
+                                if self.__user_conn.get(user_name):
+                                    self.__user_conn[user_name].send(str.encode(json.dumps({'join': True, "channel_name": channel_name, "status": "accept"})))
 
-                            elif reponse.lower() == 'r' or 'refuser':
+                            elif reponse.lower() == ('r' or 'refuser'):
                                 set_status_channel_rq(connexion=self.__connexion, refuse=True, request_id=request_id)
-                                self.__user_conn[user_name].send(str.encode(
+                                if self.__user_conn.get(user_name):
+                                    self.__user_conn[user_name].send(str.encode(
                                     json.dumps({'join': True, "channel_name": channel_name, "status": "refuse"})))
 
                             else:
                                 print(f"{reponse} n'existe pas")
                                 reponse = None
-                        except:
+                        except Exception as e:
+                            print(e)
                             reponse = None
-                print("Actualisation dans 10s")
-                sleep(10)
+
             else:
                 print("Actualisation dans 10s, pas de nouvelles demandes")
                 sleep(10)
@@ -210,9 +231,9 @@ class Server:
 
     def __bind(self):
         """
-        Permet de créer le socket et de bind l'ip et le port au socket
+        Permet de créer le socket et de bind l'IP et le port au socket.
 
-        :return: :bool: Si la connexion est réussie
+        :return: :bool: Si la connexion est réussie.
         """
         try:
             print("Création du socket")
@@ -227,21 +248,21 @@ class Server:
 
     def __credential_checker(self, client, ip):
         """
-        Permet de check si l'utilisateur doit crée un compte / a un compte / est ban / kick
+        Permet de vérifier si l'utilisateur doit créer un compte, a un compte, est banni ou kické.
 
-        :param client: La connexion socket entre le client et le serveur
-        :param ip: l'ip du client
-        :return: :bool: si la connexion est réussie
+        :param client: La connexion socket entre le client et le serveur.
+        :param ip: L'IP du client.
+        :return: :bool: Si la connexion est réussie.
         """
         logged = False
         while not logged and not self.__exit_flag.is_set():
             "tant qu'il n'est pas log, attend ses logins"
             __reply = client.recv(1024).decode()
-            print(__reply)
+            # print(__reply)
 
             reply = json.loads(__reply)
 
-            print(reply)
+            # print(reply)
 
             login = reply.get("login", None) # Récupere les informations de login comme username et password
             register = reply.get("register", None) # Récupere les informations de register comme username et password
@@ -256,12 +277,12 @@ class Server:
                         return logged
 
                     is_kick, duree = check_kick(user=reply.get("user"), ip=ip, connexion=self.__connexion)
-                    print(duree)
+                    # print(duree)
                     if is_kick:
                         "renvoie false si kick"
                         client.send(str.encode(json.dumps({'login_msg': True, 'login': False, 'kick': duree})))
                         return logged
-                    print(self.__user_conn)
+                    # print(self.__user_conn)
                     if reply.get("user") in self.__user_conn: #check si l'utilisateur est deja log sur un autre client
                         client.send(str.encode(json.dumps({'login_msg': True, 'login': False, 'already_logged': True})))
                         return None
@@ -286,7 +307,7 @@ class Server:
                 "L'user veut se register, le serveur attend sa nouvelle requete avec l'username et password"
 
                 user_exist = check_user_exist(user=reply.get("user"), connexion=self.__connexion)
-                print(user_exist)
+                # print(user_exist)
                 if user_exist:
                     "L'utilisateur existe deja, il doit se connecter alors ou se register avec un autre username, le client va lui afficher un message d'erreur, il devra recliquer sur register"
                     client.send(str.encode(json.dumps({'register_msg': True, 'register': False})))
@@ -303,7 +324,7 @@ class Server:
                         return logged
 
                     "l'user existe pas, le serveur l'enregiste, renvoie dans la boucle, l'user doit se connecter"
-                    print(reply.get("user"), reply.get("password"), ip)
+                    # print(reply.get("user"), reply.get("password"), ip)
                     register_user(user=reply.get("user"), password=reply.get("password"), ip=ip,
                                   connexion=self.__connexion)
                     client.send(str.encode(json.dumps({'register_msg': True, 'register': True})))
@@ -316,10 +337,11 @@ class Server:
 
     def __accept_clients(self):
         """
-        Permet d'accepter les clients jusqu'au nombre max d'users
+        Permet d'accepter les clients jusqu'au nombre max d'utilisateurs.
         """
+
         rq_thread = Thread(target=self.__channel_rq, args=())
-        # rq_thread.start()
+        rq_thread.start()
         self.__threads.append(rq_thread)
 
         while self.running and not self.__exit_flag.is_set():
@@ -340,13 +362,13 @@ class Server:
 
     def __message_handler(self, message, client, ip):
         """
-        Gere les messages reçu
+        Gère les messages reçus.
 
-        :param message: Message reçu du client
-        :param client: La connexion entre le client et le serveur
-        :return: "stop_connexion" si l'utilisateur a fermer le bot, "relogin" si l'utilisateur s'est déconnecté, sinon None
+        :param message: Message reçu du client.
+        :param client: La connexion entre le client et le serveur.
+        :return: "stop_connexion" si l'utilisateur a fermé le client, "relogin" si l'utilisateur s'est déconnecté, sinon None.
         """
-        print(message)  # debug
+        # print(message)  # debug
 
         is_kill = message.get("kill", None)
         "Si l'utilisateur veut arreter le serveur"
@@ -399,7 +421,7 @@ class Server:
 
             users = get_all_user_name(connexion=self.__connexion)
             self.__user_status.update({user: "deconnected" for user in users if user not in self.__user_status})
-            print(self.__user_status)
+            # print(self.__user_status)
             client.send(str.encode(json.dumps({'get_status': self.__user_status})))
             return None
 
@@ -479,7 +501,8 @@ class Server:
                 sleep(5)
                 self.running = False
                 self.__exit_flag.set()
-                sys.exit(0)
+                # sys.exit(0)
+                os._exit(os.EX_OK)
             return None
 
 
@@ -489,7 +512,7 @@ class Server:
             if get_channel_acceptation(channel_name=channel_name, connexion=self.__connexion):
                 set_new_channel_rq(connexion=self.__connexion, username=user, channel_name=channel_name)
             else:
-                print('here')
+                # print('here')
                 set_new_channel_rq(connexion=self.__connexion, username=user, channel_name=channel_name, status="accept")
                 client.send(str.encode(json.dumps({'join': True, "channel_name": channel_name, "status": "accept"})))
             return None
@@ -509,9 +532,10 @@ class Server:
 
     def __client_hdl(self, new_client, ip):
         """
-        Cette fonction permet de gerer l'authentification du client, recupère ses messages, et gère aussi la déconnexion
-        :param new_client: Connexion socket
-        :param ip: ip du client
+        Gère l'authentification du client, récupère ses messages et gère aussi la déconnexion.
+
+        :param new_client: Connexion socket.
+        :param ip: IP du client.
         """
         closed = False
         while not closed and not self.__exit_flag.is_set():
@@ -527,7 +551,7 @@ class Server:
                 while is_logged and not self.__exit_flag.is_set():
                     try:
                         __reply = new_client.recv(1024).decode()
-                        print(__reply)
+                        # print(__reply)
                         reply = json.loads(__reply)
 
                         status = self.__message_handler(message=reply, client=new_client, ip=ip)
@@ -550,11 +574,12 @@ class Server:
 
         else:
             "l'user a fermer son client, on supprime donc sa connexion, son thread et on enleve un user"
+            # print("user deconnected")
             new_client.close()
             try:
+                self.__c_user -= 1
                 self.__user_conn = {key: val for key, val in self.__user_conn.items() if val != new_client}
                 self.__conn_client.remove(new_client)
-                self.__c_user -= 1
                 self.__threads.remove(current_thread())
             except ValueError:
                 pass
@@ -569,6 +594,8 @@ class Server:
         self.__connexion = check_bdd(host=self.__ip_bdd)
         if not self.__connexion:
             self.running = False
+            self.__exit_flag.set()
+            os._exit(os.EX_OK)
 
         while self.running and not self.__exit_flag.is_set():
             self.__accept_clients()
