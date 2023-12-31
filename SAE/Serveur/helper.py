@@ -3,13 +3,13 @@ from mysql.connector import errorcode
 from datetime import datetime, timedelta
 
 """
-La plupart des fonctions d'acces a la base de donnée
+La plupart des fonctions d'accès à la base de données
 """
 
 """
 //////////////////////////////////
 
-FONCTIONS CHECK (PERMETTANT DE CHECK UNE INFORMATION DANS LA BASE DE DONNEES)
+FONCTIONS CHECK (PERMETTANT DE VÉRIFIER UNE INFORMATION DANS LA BASE DE DONNÉES)
 
 //////////////////////////////////
 """
@@ -17,26 +17,33 @@ FONCTIONS CHECK (PERMETTANT DE CHECK UNE INFORMATION DANS LA BASE DE DONNEES)
 
 def check_bdd(host):
     """
-    Permet de check si la base de données est accessible, se connecte et renvoi le curseur
+    Vérifie si la base de données est accessible, se connecte et renvoie le curseur
 
-    :param host: Ip de la base de donnée
-    :return: Connexion si c'est bon sinon False
+    :param host: Adresse IP de la base de données
+    :return: Connexion si réussie, sinon False
     """
     try:
         connexion = mysql.connector.connect(
             host=host,
             user="Server",
             password="4dm1n",
-            database="SAE"
+            database="SAE",
+            connect_timeout=2
         )
 
     except mysql.connector.Error as err:
-        if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
-            print("Erreur d'authentification : Vérifiez votre nom d'utilisateur et votre mot de passe.")
-        elif err.errno == mysql.connector.errorcode.ER_BAD_DB_ERROR:
-            print("Base de données non existante : Vérifiez le nom de la base de données.")
+        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+            print("Accès refusé. Vérifiez votre nom d'utilisateur ou votre mot de passe.") # Ne doit pas apparaitre sauf si mal config coté server
+        elif err.errno == errorcode.ER_BAD_DB_ERROR:
+            print("La base de données spécifiée n'existe pas.")
+        elif err.errno == errorcode.CR_CONN_HOST_ERROR:
+            print("Impossible de se connecter au serveur mysql (mauvaise ip ?).")
+        elif err.errno == errorcode.CR_CONNECTION_ERROR:
+            print("Erreur de connexion à la base de données.")
+        elif err.errno == errorcode.CR_SERVER_LOST:
+            print("La connexion au serveur MySQL a été perdue.")
         else:
-            print(f"Erreur MySQL non gérée : {err}")
+            print(f"Erreur MySQL: {err}")
         return False
     else:
         return connexion
@@ -44,10 +51,11 @@ def check_bdd(host):
 
 def check_user_exist(user, connexion):
     """
-    Check si l'user existe dans la table user
-    :param user: Username de l'utilisateur
-    :param connexion: La connexion à la Base de Données
-    :return: True si existe, sinon False
+    Vérifie si l'utilisateur existe dans la table 'Users'
+
+    :param user: Nom d'utilisateur
+    :param connexion: Connexion à la base de données
+    :return: True si l'utilisateur existe, sinon False
     """
     cursor = connexion.cursor()
     try:
@@ -68,10 +76,11 @@ def check_user_exist(user, connexion):
 
 def check_ip_exist(ip, connexion):
     """
-    Check si l'ip existe dans la table user
-    :param ip: Ip à tester
-    :param connexion: La connexion à la Base de Données
-    :return: True si existe, sinon False
+    Vérifie si l'adresse IP existe dans la table 'Users'
+
+    :param ip: Adresse IP à tester
+    :param connexion: Connexion à la base de données
+    :return: True si l'adresse IP existe, sinon False
     """
     cursor = connexion.cursor()
     try:
@@ -92,12 +101,12 @@ def check_ip_exist(ip, connexion):
 
 def check_ban(user, ip, connexion):
     """
-    Permet de check si une ip ou un utilisateur est banni
+    Vérifie si un utilisateur ou une adresse IP est banni
 
-    :param user: Username de l'utilisateur
-    :param ip: Ip de l'utilisateur
-    :param connexion: La connexion à la Base de Données
-    :return: True si l'user ou l'ip est ban, False sinon
+    :param user: Nom d'utilisateur
+    :param ip: Adresse IP de l'utilisateur
+    :param connexion: Connexion à la base de données
+    :return: True si l'utilisateur ou l'adresse IP est banni, False sinon
     """
     cursor = connexion.cursor()
     try:
@@ -130,12 +139,12 @@ def check_ban(user, ip, connexion):
 
 def check_kick(user, ip, connexion):
     """
-    Permet de check si une ip ou un utilisateur est kick
+    Vérifie si un utilisateur ou une adresse IP est kick
 
-    :param user: Username de l'utilisateur
-    :param ip: Ip de l'utilisateur
-    :param connexion: La connexion à la Base de Données
-    :return: True, Date si l'user ou l'ip est kick , avec la date a laquelle il pourra se relogin, False, None sinon
+    :param user: Nom d'utilisateur
+    :param ip: Adresse IP de l'utilisateur
+    :param connexion: Connexion à la base de données
+    :return: True, Date si l'utilisateur ou l'adresse IP est kick, False, None sinon
     """
 
     cursor = connexion.cursor()
@@ -158,7 +167,6 @@ def check_kick(user, ip, connexion):
             rq = "SELECT timestamp FROM Users WHERE ip = %s AND status = 'kick'"
             cursor.execute(rq, (ip,))
             result_ip = cursor.fetchall()
-            print(result_ip)
             return True, result_ip[0][0].strftime('%Y-%m-%d %H:%M:%S')
 
         return False, None
@@ -175,19 +183,20 @@ def check_kick(user, ip, connexion):
 """
 //////////////////////////////////
 
-FONCTIONS SET ( PERMETTANT DE MODIFIER LA BASE DE DONNEE )
+FONCTIONS SET (PERMETTANT DE MODIFIER LA BASE DE DONNÉES)
 
 //////////////////////////////////
 """
 
 def set_new_channel_rq(connexion, username, channel_name, status="pending"):
     """
-    Ajoute une nouvelle requête pour rejoindre un canal
-    :param connexion: Connexion avec la base de données
+    Ajoute une nouvelle requête pour rejoindre un channel
+
+    :param connexion: Connexion à la base de données
     :param username: Nom de l'utilisateur faisant la demande
     :param channel_name: Nom du channel pour lequel la demande est faite
-    :return:
     """
+
     user_id = get_user_id(username, connexion)
     channel_id = get_channel_id(channel_name, connexion)
 
@@ -200,7 +209,7 @@ def set_new_channel_rq(connexion, username, channel_name, status="pending"):
         connexion.commit()
     except mysql.connector.Error as err:
         connexion.rollback()
-        print(f"Erreur lors de l'ajout de la nouvelle requête vers le canal : {err}")
+        print(f"Erreur lors de l'ajout de la nouvelle requête vers le channel : {err}")
         return
     finally:
         cursor.close()
@@ -208,12 +217,12 @@ def set_new_channel_rq(connexion, username, channel_name, status="pending"):
 
 def set_status_channel_rq(connexion, accept=False, refuse=False, request_id=None):
     """
-    Permet de définir le status d'une requete pour rejoindre un channel
-    :param connexion: Connexion avec la base de données
-    :param accept: Si la demande a besoin d'etre accepté
-    :param refuse: Si la demande a besoin d'etre refusé
-    :param request_id: l'id de la requete a modifier le status
-    :return:
+    Définit le statut d'une requête pour rejoindre un channel
+
+    :param connexion: Connexion à la base de données
+    :param accept: True si la demande doit être acceptée
+    :param refuse: True si la demande doit être refusée
+    :param request_id: ID de la requête à modifier
     """
     if not (accept or refuse) or (accept and refuse):
         return
@@ -241,12 +250,12 @@ def set_status_channel_rq(connexion, accept=False, refuse=False, request_id=None
 
 def ban_user(user=None, ip=None, connexion=None):
     """
-    Permet de ban un username / une ip
+    Bannit un utilisateur ou une adresse IP
 
-    :param user: Username de l'utilisateur
-    :param ip: L'ip a ban
-    :param connexion: La connexion à la Base de Données
-    :return: True si c'est bon, sinon False
+    :param user: Nom d'utilisateur
+    :param ip: Adresse IP à bannir
+    :param connexion: Connexion à la base de données
+    :return: True si réussi, False sinon
     """
     cursor = connexion.cursor()
 
@@ -282,13 +291,13 @@ def ban_user(user=None, ip=None, connexion=None):
 
 def kick_user(user=None, ip=None, duree: int = None, connexion=None):
     """
-    Permet de kick un username / une ip pendant un nombre d'heure défini
+    Kick un utilisateur ou une adresse IP pendant une durée définie
 
-    :param user: Username de l'utilisateur
-    :param ip: L'ip a kick
-    :param duree: Nombre d'heure de kick
-    :param connexion: La connexion à la Base de Données
-    :return: True, Date si c'est bon, sinon False
+    :param user: Nom d'utilisateur
+    :param ip: Adresse IP à kicker
+    :param duree: Nombre d'heures du kick
+    :param connexion: Connexion à la base de données
+    :return: True, Date si réussi, False sinon
     """
     cursor = connexion.cursor()
     next_login = (datetime.now() + timedelta(hours=duree)).strftime('%Y-%m-%d %H:%M:%S')
@@ -303,11 +312,11 @@ def kick_user(user=None, ip=None, duree: int = None, connexion=None):
                 return False
 
         if user:
-            rq_kick_target = "UPDATE Users SET status = 'kick', timestamp = %s WHERE username = %s"
-            cursor.execute(rq_kick_target, (next_login, user))
+            rq = "UPDATE Users SET status = 'kick', timestamp = %s WHERE username = %s"
+            cursor.execute(rq, (next_login, user))
         elif ip:
-            rq_kick_target = "UPDATE Users SET status = 'kick', timestamp = %s WHERE ip = %s"
-            cursor.execute(rq_kick_target, (next_login, ip))
+            rq = "UPDATE Users SET status = 'kick', timestamp = %s WHERE ip = %s"
+            cursor.execute(rq, (next_login, ip))
 
         connexion.commit()
         return True, next_login
@@ -323,12 +332,13 @@ def kick_user(user=None, ip=None, duree: int = None, connexion=None):
 
 def save_channel_message(username, channel_name, message, connexion):
     """
-    Permet de sauvegarder un message envoyé dans un channel par un membre
-    :param username: Username de l'émetteur du message
+    Sauvegarde un message envoyé dans un channel par un membre
+
+    :param username: Nom de l'émetteur du message
     :param channel_name: Nom du channel où le message a été envoyé
     :param message: Message envoyé
-    :param connexion: Connexion avec la base de donnée
-    :return: True si c'est bon sinon False
+    :param connexion: Connexion à la base de données
+    :return: True si réussi, False sinon
     """
     cursor = connexion.cursor()
     try:
@@ -356,12 +366,13 @@ def save_channel_message(username, channel_name, message, connexion):
 
 def save_private_message(username, other_user, message, connexion):
     """
-    Permet de sauvegarder un message privé entre le membre 1 et le membre 2 dans la base de donnée
-    :param username: Username de l'émetteur du message
-    :param other_user: Username du recepteur du message
+    Sauvegarde un message privé entre deux membres dans la base de données
+
+    :param username: Nom de l'émetteur du message
+    :param other_user: Nom du destinataire du message
     :param message: Message envoyé
-    :param connexion: Connexion avec la base de donnée
-    :return: True si c'est bon sinon False
+    :param connexion: Connexion à la base de données
+    :return: True si réussi, False sinon
     """
     cursor = connexion.cursor()
     try:
@@ -389,13 +400,12 @@ def save_private_message(username, other_user, message, connexion):
 
 def register_user(user, password, ip, connexion):
     """
-    Créer un user dans la table user, ajoute son mot de passe et son ip
+    Crée un utilisateur dans la table 'Users', ajoute son mot de passe et son adresse IP
 
-    :param user: Username de l'utilisateur
-    :param password: Le mot de passe de l'utilisateur
-    :param ip: L'ip de l'utilisateur
-    :param connexion: La connexion à la Base de Données
-    :return:
+    :param user: Nom d'utilisateur
+    :param password: Mot de passe de l'utilisateur
+    :param ip: Adresse IP de l'utilisateur
+    :param connexion: Connexion à la base de données
     """
     cursor = connexion.cursor()
     try:
@@ -410,7 +420,7 @@ def register_user(user, password, ip, connexion):
 """
 //////////////////////////////////
 
-FONCTIONS GET ( PERMETTANT DE RECUPERER DES INFORMATIONS DE LA BASE DE DONNEE )
+FONCTIONS GET (PERMETTANT DE RÉCUPÉRER DES INFORMATIONS DE LA BASE DE DONNÉES)
 
 //////////////////////////////////
 """
@@ -418,11 +428,11 @@ FONCTIONS GET ( PERMETTANT DE RECUPERER DES INFORMATIONS DE LA BASE DE DONNEE )
 
 def get_user_pwd(user, connexion):
     """
-    Récupere l'username et le mot de passe d'un user
+    Récupère le mot de passe d'un utilisateur
 
-    :param user: Username de l'utilisateur
-    :param connexion: La connexion à la Base de Données
-    :return: Username:Password si trouvé sinon None
+    :param user: Nom d'utilisateur
+    :param connexion: Connexion à la base de données
+    :return: Nom d'utilisateur, Mot de passe, sinon None
     """
     cursor = connexion.cursor()
     try:
@@ -444,10 +454,10 @@ def get_user_pwd(user, connexion):
 
 def get_channel_acceptation(channel_name, connexion):
     """
-    Permet de récupérer si le channel a besoin de faire une requête pour être rejoins
+    Récupère si le channel nécessite une demande d'acceptation pour rejoindre.
     :param channel_name: Le nom du channel
-    :param connexion: La connexion a la bdd
-    :return: renvoie le resultat si c'est bon sinon None
+    :param connexion: Connexion à la base de données
+    :return: Renvoie le résultat si réussi, sinon None
     """
     cursor = connexion.cursor()
     try:
@@ -469,9 +479,9 @@ def get_channel_acceptation(channel_name, connexion):
 
 def get_all_user_name(connexion):
     """
-    Récupère la liste de tous les users de la base de données
-    :param connexion: Connexion avec la base de données
-    :return: La liste des users si tout est bon, sinon None
+    Récupère la liste de tous les utilisateurs de la base de données.
+    :param connexion: Connexion à la base de données
+    :return: La liste des noms d'utilisateur si réussi, sinon None
     """
     cursor = connexion.cursor()
     try:
@@ -491,9 +501,9 @@ def get_all_user_name(connexion):
 
 def get_channel_rq(connexion):
     """
-    Cette fonction sert au serveur pour recuperer toutes les demandes pour rejoindre des channels
-    :param connexion: Connexion avec la base de données
-    :return: Une liste de liste comprennant ['request_id', 'channel_name', 'username']
+    Cette fonction est utilisée par le serveur pour récupérer toutes les demandes pour rejoindre des canaux.
+    :param connexion: Connexion à la base de données
+    :return: Une liste de listes contenant ['request_id', 'channel_name', 'username']
     """
     result = []
 
@@ -529,10 +539,10 @@ def get_channel_rq(connexion):
 
 def get_channel_id(channel_name, connexion):
     """
-    Permet de récuperer le channelID du channel
+    Récupère le channelID du channel.
     :param channel_name: Nom du channel
-    :param connexion: La connexion à la Base de Données
-    :return: ChannelID si existe sinon None
+    :param connexion: Connexion à la base de données
+    :return: ChannelID s'il existe, sinon None
     """
     cursor = connexion.cursor()
 
@@ -547,7 +557,7 @@ def get_channel_id(channel_name, connexion):
             return None
 
     except mysql.connector.Error as err:
-        print(f"Erreur lors de la récupération de l'ID du canal : {err}")
+        print(f"Erreur lors de la récupération de l'ID du channel : {err}")
         return None
 
     finally:
@@ -555,10 +565,10 @@ def get_channel_id(channel_name, connexion):
 
 def get_joined_channel_rq(connexion, username):
     """
-    Récupère les informations des demandes de canal pour un utilisateur donné
-    :param connexion: Connexion avec la base de données
+    Récupère les informations des demandes de channel pour un utilisateur donné
+    :param connexion: Connexion à la base de données
     :param username: Nom de l'utilisateur
-    :return: Dictionnaire avec le nom du canal en clé et le statut en valeur
+    :return: Dictionnaire avec le nom du channel en clé et le statut en valeur
     """
     cursor = connexion.cursor(dictionary=True)
 
@@ -577,7 +587,7 @@ def get_joined_channel_rq(connexion, username):
         return joined_channels
 
     except mysql.connector.Error as err:
-        print(f"Erreur lors de la récupération des demandes de canal pour l'utilisateur : {err}")
+        print(f"Erreur lors de la récupération des demandes de channel pour l'utilisateur : {err}")
         return None
     finally:
         cursor.close()
@@ -585,8 +595,8 @@ def get_joined_channel_rq(connexion, username):
 def get_user_id(user, connexion):
     """
     Permet de récuperer l'userID de l'user
-    :param user: Username de l'utilisateur
-    :param connexion: La connexion à la Base de Données
+    :param user: Nom d'utilisateur
+    :param connexion: Connexion à la base de données
     :return: UserID si existe sinon None
     """
     cursor = connexion.cursor()
@@ -607,7 +617,8 @@ def get_user_id(user, connexion):
         cursor.close()
 
 if __name__ == "__main__":
-    co = check_bdd("192.168.1.19")
+    co = check_bdd("192.168.1.11")
+    print(co)
     # print(check_user_exist("toto", co))
     # print(register_user("toto2", "toto", "192.168.1.19", co))
     # x = get_channel_acceptation(channel_name="Blabla", connexion=co)
@@ -620,9 +631,9 @@ if __name__ == "__main__":
     # print(get_user_id("toto10", connexion=co))
     # print(get_joined_channel_rq(connexion=co, username="toto"))
     # print(get_channel_rq(connexion=co))
-    print(check_ban("toto", "192.168.1.19",connexion=co))
+    # print(check_ban("toto", "192.168.1.19",connexion=co))
     # print(check_kick(user="toto", ip="192.168.1.19",connexion=co))
     # print(kick_user(ip="192.168.1.19", connexion=co, duree=24))
     # print(check_kick(user="toto", ip="192.168.1.19", connexion=co))
     # print(ban_user(ip="10.0.0.1", connexion=co))
-    print(check_kick("toto","192.168.1.19",connexion=co))
+    # print(check_kick("toto","192.168.1.19",connexion=co))
