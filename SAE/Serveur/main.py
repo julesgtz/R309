@@ -65,4 +65,4 @@ if __name__ == "__main__":
 
     if is_args_good:
         Server(ip=args['i'], port=args['p'], max_user=args['u'], ip_bdd=args['b']).start()
-
+        #main.py -i 192.168.1.19 -p 6530 -u 3 -b 127.0.0.1

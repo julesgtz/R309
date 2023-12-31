@@ -1,8 +1,7 @@
-from client import MainWindow
+from client import start_client
 import argparse
 import ipaddress
-import sys
-from PyQt5.QtWidgets import QApplication
+
 
 def args_checker(args):
     """
@@ -44,7 +43,6 @@ if __name__ == "__main__":
     is_args_good = args_checker(args)
 
     if is_args_good:
-        app = QApplication(sys.argv)
-        MainWindow(ip=args['i'], port=args['p'])
-        app.exec()
+        start_client(ip=args['i'], port=args['p'])
+        #main.py -i 192.168.1.19 -p 6530
 
